@@ -6,7 +6,14 @@ from pymongo import MongoClient
 def migrate(mongo_uri):
     print(f"Connecting to MongoDB...")
     client = MongoClient(mongo_uri)
-    db = client.get_default_database() or client['magis_cafe']
+    try:
+        db = client.get_default_database()
+    except Exception:
+        db = None
+    if db is None:
+        db = client['magis_cafe']
+
+    print(f"Using database: {db.name}")
 
     sqlite_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'magis_cafe.db')
     if not os.path.exists(sqlite_path):

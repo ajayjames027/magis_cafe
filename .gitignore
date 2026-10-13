@@ -4,6 +4,8 @@ __pycache__/
 uploads/*
 !uploads/.gitkeep
 .env
+*.env
+atlas-credentials.env
 *.log
 .vscode/
 .idea/

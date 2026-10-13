@@ -3,7 +3,42 @@ import sqlite3
 from datetime import datetime, date, timedelta
 import re
 
-MONGO_URI = os.environ.get('MONGO_URI', '').strip()
+def _load_mongo_uri():
+    uri = os.environ.get('MONGO_URI', '').strip()
+    if uri:
+        return uri
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    # Try atlas-credentials.env
+    atlas_path = os.path.join(base_dir, 'atlas-credentials.env')
+    if os.path.exists(atlas_path):
+        try:
+            with open(atlas_path, 'r', encoding='utf-8') as f:
+                for line in f:
+                    if line.strip().startswith('MONGODB_URI='):
+                        val = line.split('=', 1)[1].strip().strip('"').strip("'")
+                        if val:
+                            if '/magis_cafe' not in val:
+                                if '?' in val:
+                                    parts = val.split('?', 1)
+                                    return parts[0].rstrip('/') + '/magis_cafe?' + parts[1]
+                                else:
+                                    return val.rstrip('/') + '/magis_cafe?retryWrites=true&w=majority'
+                            return val
+        except Exception:
+            pass
+    # Try .env
+    env_path = os.path.join(base_dir, '.env')
+    if os.path.exists(env_path):
+        try:
+            with open(env_path, 'r', encoding='utf-8') as f:
+                for line in f:
+                    if line.strip().startswith('MONGO_URI='):
+                        return line.split('=', 1)[1].strip().strip('"').strip("'")
+        except Exception:
+            pass
+    return ''
+
+MONGO_URI = _load_mongo_uri()
 DB_TYPE = 'mongo' if MONGO_URI else 'sqlite'
 SQLITE_DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'magis_cafe.db')
 
@@ -14,18 +49,19 @@ if MONGO_URI:
     try:
         from pymongo import MongoClient
         mongo_client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
-        # Parse db name or default to magis_cafe
-        db_name = 'magis_cafe'
         try:
             default_db = mongo_client.get_default_database()
-            if default_db is not None:
-                db_name = default_db.name
         except Exception:
-            pass
-        mongo_db = mongo_client[db_name]
+            default_db = None
+        
+        if default_db is not None:
+            mongo_db = default_db
+        else:
+            mongo_db = mongo_client['magis_cafe']
+
         # Test connection
         mongo_client.admin.command('ping')
-        print(f"Connected to MongoDB Atlas successfully (DB: {db_name}).")
+        print(f"Connected to MongoDB Atlas successfully (Database: {mongo_db.name}).")
         DB_TYPE = 'mongo'
     except Exception as e:
         print(f"Failed to connect to MongoDB ({e}). Falling back to SQLite.")
