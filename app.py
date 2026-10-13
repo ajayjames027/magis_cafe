@@ -3,12 +3,12 @@ import io
 import socket
 from datetime import datetime, date, timedelta
 from flask import Flask, render_template, request, jsonify, send_file
-import sqlite3
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from werkzeug.utils import secure_filename
 
-from database import init_db, seed_initial_students_if_empty, get_db_connection
+import db_service
+from db_service import DB_TYPE, MONGO_URI
 from importer import preview_excel_file, import_students_from_excel
 
 app = Flask(__name__)
@@ -17,9 +17,8 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-# Initialize database on startup
-init_db()
-seed_initial_students_if_empty()
+# Initialize database on startup (MongoDB Atlas or SQLite fallback)
+db_service.init_db()
 
 def get_local_ip():
     """Get LAN IP address for mobile access."""
@@ -37,16 +36,12 @@ def get_current_meal_session():
     now = datetime.now()
     minutes = now.hour * 60 + now.minute
     
-    # 7:00 AM - 10:30 AM -> Breakfast
     if 420 <= minutes < 630:
         return 'Breakfast'
-    # 10:30 AM - 3:30 PM -> Lunch
     elif 630 <= minutes < 930:
         return 'Lunch'
-    # 3:30 PM - 7:00 PM -> Snacks
     elif 930 <= minutes < 1140:
         return 'Snacks'
-    # 7:00 PM - 11:00 PM -> Dinner
     elif 1140 <= minutes < 1380:
         return 'Dinner'
     else:
@@ -60,9 +55,6 @@ def index():
 
 @app.route('/report/print')
 def print_report():
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
     req_date = request.args.get('date', date.today().isoformat())
     start_date = request.args.get('start_date', '')
     end_date = request.args.get('end_date', '')
@@ -70,49 +62,17 @@ def print_report():
     violation = request.args.get('violation_type', '')
     batch = request.args.get('batch', '')
 
-    query = '''
-        SELECT l.*, s.roll_no, s.name as student_name, s.batch, s.gender, s.mobile
-        FROM food_logs l
-        JOIN students s ON l.student_id = s.id
-        WHERE 1=1
-    '''
-    params = []
+    logs, summary = db_service.get_food_logs(
+        date=req_date if not (start_date and end_date) else '',
+        start_date=start_date,
+        end_date=end_date,
+        meal_session=meal,
+        violation_type=violation,
+        batch=batch,
+        limit=1000
+    )
 
-    if start_date and end_date:
-        query += ' AND l.log_date BETWEEN ? AND ?'
-        params.extend([start_date, end_date])
-        date_title = f"{start_date} to {end_date}"
-    elif req_date:
-        query += ' AND l.log_date = ?'
-        params.append(req_date)
-        date_title = req_date
-    else:
-        date_title = "All Time"
-
-    if meal and meal != 'All':
-        query += ' AND l.meal_session = ?'
-        params.append(meal)
-
-    if violation and violation != 'All':
-        query += ' AND l.violation_type = ?'
-        params.append(violation)
-
-    if batch and batch != 'All':
-        query += ' AND s.batch = ?'
-        params.append(batch)
-
-    query += ' ORDER BY l.log_date DESC, l.id DESC'
-
-    cursor.execute(query, params)
-    logs = [dict(r) for r in cursor.fetchall()]
-
-    # Aggregates
-    total_logs = len(logs)
-    hand_count = sum(1 for l in logs if l['violation_type'] in ('eat_in_hand', 'both'))
-    waste_count = sum(1 for l in logs if l['violation_type'] in ('waste_food', 'both'))
-    unique_students = len(set(l['student_id'] for l in logs))
-
-    conn.close()
+    date_title = f"{start_date} to {end_date}" if start_date and end_date else (req_date or "All Time")
 
     return render_template(
         'print_report.html',
@@ -120,10 +80,10 @@ def print_report():
         date_title=date_title,
         meal=meal or 'All Meals',
         batch=batch or 'All Batches',
-        total_logs=total_logs,
-        hand_count=hand_count,
-        waste_count=waste_count,
-        unique_students=unique_students,
+        total_logs=summary['total'],
+        hand_count=summary['eat_in_hand'] + summary['both'],
+        waste_count=summary['waste_food'] + summary['both'],
+        unique_students=summary['unique_students'],
         generated_at=datetime.now().strftime('%d %b %Y, %I:%M %p')
     )
 
@@ -139,22 +99,13 @@ def api_session_info():
         'detected_meal': get_current_meal_session(),
         'local_ip': ip,
         'local_port': port,
-        'mobile_url': f"http://{ip}:{port}"
+        'mobile_url': f"http://{ip}:{port}",
+        'database_type': 'MongoDB Atlas' if ('mongodb+srv' in MONGO_URI) else ('MongoDB Local' if DB_TYPE == 'mongo' else 'SQLite')
     })
 
 @app.route('/api/batches')
 def api_batches():
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('''
-        SELECT batch, COUNT(*) as count 
-        FROM students 
-        WHERE is_active = 1 
-        GROUP BY batch 
-        ORDER BY batch ASC
-    ''')
-    batches = [dict(r) for r in cursor.fetchall()]
-    conn.close()
+    batches = db_service.get_batches()
     return jsonify(batches)
 
 @app.route('/api/students')
@@ -164,35 +115,12 @@ def api_students():
     log_date = request.args.get('date', date.today().isoformat())
     meal_session = request.args.get('meal_session', '')
 
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    query = '''
-        SELECT s.*,
-            (SELECT COUNT(*) FROM food_logs l WHERE l.student_id = s.id AND l.log_date = ?) as today_logs_count,
-            (SELECT violation_type FROM food_logs l 
-             WHERE l.student_id = s.id AND l.log_date = ? AND (? = '' OR l.meal_session = ?)
-             ORDER BY l.id DESC LIMIT 1) as current_meal_violation
-        FROM students s
-        WHERE s.is_active = 1
-    '''
-    params = [log_date, log_date, meal_session, meal_session]
-
-    if batch and batch != 'All':
-        query += ' AND s.batch = ?'
-        params.append(batch)
-
-    if search:
-        query += ' AND (s.roll_no LIKE ? OR s.name LIKE ? OR s.mobile LIKE ?)'
-        like_str = f'%{search}%'
-        params.extend([like_str, like_str, like_str])
-
-    query += ' ORDER BY s.roll_no ASC'
-
-    cursor.execute(query, params)
-    students = [dict(r) for r in cursor.fetchall()]
-    conn.close()
-
+    students = db_service.get_students(
+        search=search,
+        batch=batch,
+        log_date=log_date,
+        meal_session=meal_session
+    )
     return jsonify(students)
 
 @app.route('/api/students', methods=['POST'])
@@ -207,62 +135,16 @@ def api_create_student():
     if not roll_no or not name:
         return jsonify({'error': 'Roll Number and Name are required'}), 400
 
-    conn = get_db_connection()
-    cursor = conn.cursor()
     try:
-        cursor.execute('''
-            INSERT INTO students (roll_no, name, batch, mobile, gender)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (roll_no, name, batch, mobile, gender))
-        conn.commit()
-        new_id = cursor.lastrowid
-        conn.close()
-        return jsonify({'success': True, 'id': new_id, 'message': f'Student {name} ({roll_no}) added successfully.'})
-    except sqlite3.IntegrityError:
-        conn.close()
-        return jsonify({'error': f'Roll Number {roll_no} already exists.'}), 400
+        db_service.create_or_update_student(roll_no, name, batch, mobile, gender)
+        return jsonify({'success': True, 'message': f'Student {name} ({roll_no}) saved successfully.'})
     except Exception as e:
-        conn.close()
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/students/<int:student_id>', methods=['PUT'])
-def api_update_student(student_id):
-    data = request.get_json() or {}
-    roll_no = data.get('roll_no', '').strip().upper()
-    name = data.get('name', '').strip().upper()
-    batch = data.get('batch', 'I MBA').strip()
-    mobile = data.get('mobile', '').strip()
-    gender = data.get('gender', 'M').strip().upper()
-
-    if not roll_no or not name:
-        return jsonify({'error': 'Roll Number and Name are required'}), 400
-
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    try:
-        cursor.execute('''
-            UPDATE students
-            SET roll_no = ?, name = ?, batch = ?, mobile = ?, gender = ?
-            WHERE id = ?
-        ''', (roll_no, name, batch, mobile, gender, student_id))
-        conn.commit()
-        conn.close()
-        return jsonify({'success': True, 'message': 'Student updated successfully.'})
-    except sqlite3.IntegrityError:
-        conn.close()
-        return jsonify({'error': f'Roll Number {roll_no} is already used by another student.'}), 400
-    except Exception as e:
-        conn.close()
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/students/<int:student_id>', methods=['DELETE'])
+@app.route('/api/students/<student_id>', methods=['DELETE'])
 def api_delete_student(student_id):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('DELETE FROM students WHERE id = ?', (student_id,))
-    conn.commit()
-    conn.close()
-    return jsonify({'success': True, 'message': 'Student deleted successfully.'})
+    db_service.delete_student(student_id)
+    return jsonify({'success': True, 'message': 'Student removed successfully.'})
 
 @app.route('/api/logs', methods=['GET'])
 def api_get_logs():
@@ -275,65 +157,20 @@ def api_get_logs():
     search = request.args.get('search', '').strip()
     limit = request.args.get('limit', 300, type=int)
 
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    query = '''
-        SELECT l.*, s.roll_no, s.name as student_name, s.batch, s.gender, s.mobile
-        FROM food_logs l
-        JOIN students s ON l.student_id = s.id
-        WHERE 1=1
-    '''
-    params = []
-
-    if start_date and end_date:
-        query += ' AND l.log_date BETWEEN ? AND ?'
-        params.extend([start_date, end_date])
-    elif req_date:
-        query += ' AND l.log_date = ?'
-        params.append(req_date)
-
-    if meal and meal != 'All':
-        query += ' AND l.meal_session = ?'
-        params.append(meal)
-
-    if violation and violation != 'All':
-        query += ' AND l.violation_type = ?'
-        params.append(violation)
-
-    if batch and batch != 'All':
-        query += ' AND s.batch = ?'
-        params.append(batch)
-
-    if search:
-        query += ' AND (s.roll_no LIKE ? OR s.name LIKE ? OR l.remarks LIKE ?)'
-        like_str = f'%{search}%'
-        params.extend([like_str, like_str, like_str])
-
-    query += ' ORDER BY l.log_date DESC, l.id DESC LIMIT ?'
-    params.append(limit)
-
-    cursor.execute(query, params)
-    logs = [dict(r) for r in cursor.fetchall()]
-
-    # Summary calculations for current filter
-    total_logs = len(logs)
-    eat_in_hand_count = sum(1 for l in logs if l['violation_type'] == 'eat_in_hand')
-    waste_food_count = sum(1 for l in logs if l['violation_type'] == 'waste_food')
-    both_count = sum(1 for l in logs if l['violation_type'] == 'both')
-    unique_students_count = len(set(l['student_id'] for l in logs))
-
-    conn.close()
+    logs, summary = db_service.get_food_logs(
+        date=req_date,
+        start_date=start_date,
+        end_date=end_date,
+        meal_session=meal,
+        violation_type=violation,
+        batch=batch,
+        search=search,
+        limit=limit
+    )
 
     return jsonify({
         'logs': logs,
-        'summary': {
-            'total': total_logs,
-            'eat_in_hand': eat_in_hand_count,
-            'waste_food': waste_food_count,
-            'both': both_count,
-            'unique_students': unique_students_count
-        }
+        'summary': summary
     })
 
 @app.route('/api/logs', methods=['POST'])
@@ -350,26 +187,15 @@ def api_create_logs():
     if not student_ids:
         return jsonify({'error': 'No students selected'}), 400
 
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    created_ids = []
-    recorded_names = []
-
-    for sid in student_ids:
-        cursor.execute('''
-            INSERT INTO food_logs (student_id, log_date, meal_session, violation_type, waste_severity, remarks, logged_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (sid, log_date, meal_session, violation_type, waste_severity, remarks, logged_by))
-        created_ids.append(cursor.lastrowid)
-
-        cursor.execute('SELECT roll_no, name FROM students WHERE id = ?', (sid,))
-        st = cursor.fetchone()
-        if st:
-            recorded_names.append(f"{st['roll_no']} ({st['name']})")
-
-    conn.commit()
-    conn.close()
+    created_ids, recorded_names = db_service.create_food_logs(
+        student_ids=student_ids,
+        log_date=log_date,
+        meal_session=meal_session,
+        violation_type=violation_type,
+        waste_severity=waste_severity,
+        remarks=remarks,
+        logged_by=logged_by
+    )
 
     return jsonify({
         'success': True,
@@ -379,120 +205,15 @@ def api_create_logs():
         'message': f"Logged {len(created_ids)} student(s) for {meal_session} on {log_date}."
     })
 
-@app.route('/api/logs/<int:log_id>', methods=['DELETE'])
+@app.route('/api/logs/<log_id>', methods=['DELETE'])
 def api_delete_log(log_id):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('DELETE FROM food_logs WHERE id = ?', (log_id,))
-    conn.commit()
-    conn.close()
+    db_service.delete_food_log(log_id)
     return jsonify({'success': True, 'message': 'Log entry removed successfully.'})
-
-@app.route('/api/logs/<int:log_id>', methods=['PUT'])
-def api_update_log(log_id):
-    data = request.get_json() or {}
-    violation_type = data.get('violation_type')
-    waste_severity = data.get('waste_severity')
-    remarks = data.get('remarks')
-    meal_session = data.get('meal_session')
-
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('''
-        UPDATE food_logs
-        SET violation_type = COALESCE(?, violation_type),
-            waste_severity = COALESCE(?, waste_severity),
-            remarks = COALESCE(?, remarks),
-            meal_session = COALESCE(?, meal_session)
-        WHERE id = ?
-    ''', (violation_type, waste_severity, remarks, meal_session, log_id))
-    conn.commit()
-    conn.close()
-    return jsonify({'success': True, 'message': 'Log entry updated.'})
 
 @app.route('/api/analytics')
 def api_analytics():
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    today_str = date.today().isoformat()
-    week_ago_str = (date.today() - timedelta(days=7)).isoformat()
-    month_ago_str = (date.today() - timedelta(days=30)).isoformat()
-
-    # Today stats
-    cursor.execute('''
-        SELECT 
-            COUNT(*) as total,
-            SUM(CASE WHEN violation_type = 'eat_in_hand' THEN 1 ELSE 0 END) as hand_count,
-            SUM(CASE WHEN violation_type = 'waste_food' THEN 1 ELSE 0 END) as waste_count,
-            SUM(CASE WHEN violation_type = 'both' THEN 1 ELSE 0 END) as both_count,
-            COUNT(DISTINCT student_id) as unique_students
-        FROM food_logs
-        WHERE log_date = ?
-    ''', (today_str,))
-    today_stats = dict(cursor.fetchone() or {})
-
-    # All-time stats
-    cursor.execute('''
-        SELECT 
-            COUNT(*) as total,
-            SUM(CASE WHEN violation_type = 'eat_in_hand' THEN 1 ELSE 0 END) as hand_count,
-            SUM(CASE WHEN violation_type = 'waste_food' THEN 1 ELSE 0 END) as waste_count,
-            SUM(CASE WHEN violation_type = 'both' THEN 1 ELSE 0 END) as both_count,
-            COUNT(DISTINCT student_id) as unique_students
-        FROM food_logs
-    ''')
-    all_time_stats = dict(cursor.fetchone() or {})
-
-    # Meal distribution
-    cursor.execute('''
-        SELECT meal_session, COUNT(*) as count 
-        FROM food_logs 
-        GROUP BY meal_session 
-        ORDER BY count DESC
-    ''')
-    meal_distribution = [dict(r) for r in cursor.fetchall()]
-
-    # Repeat Offenders Leaderboard
-    cursor.execute('''
-        SELECT 
-            s.id, s.roll_no, s.name, s.batch,
-            COUNT(l.id) as total_violations,
-            SUM(CASE WHEN l.violation_type IN ('eat_in_hand', 'both') THEN 1 ELSE 0 END) as hand_violations,
-            SUM(CASE WHEN l.violation_type IN ('waste_food', 'both') THEN 1 ELSE 0 END) as waste_violations,
-            MAX(l.log_date) as last_violation_date
-        FROM students s
-        JOIN food_logs l ON s.id = l.student_id
-        GROUP BY s.id
-        ORDER BY total_violations DESC, s.name ASC
-        LIMIT 15
-    ''')
-    leaderboard = [dict(r) for r in cursor.fetchall()]
-
-    # Last 14 days trend
-    trend_start = (date.today() - timedelta(days=13)).isoformat()
-    cursor.execute('''
-        SELECT 
-            log_date,
-            SUM(CASE WHEN violation_type IN ('eat_in_hand', 'both') THEN 1 ELSE 0 END) as hand_count,
-            SUM(CASE WHEN violation_type IN ('waste_food', 'both') THEN 1 ELSE 0 END) as waste_count,
-            COUNT(*) as total
-        FROM food_logs
-        WHERE log_date >= ?
-        GROUP BY log_date
-        ORDER BY log_date ASC
-    ''', (trend_start,))
-    daily_trends = [dict(r) for r in cursor.fetchall()]
-
-    conn.close()
-
-    return jsonify({
-        'today': today_stats,
-        'all_time': all_time_stats,
-        'meal_distribution': meal_distribution,
-        'leaderboard': leaderboard,
-        'daily_trends': daily_trends
-    })
+    analytics = db_service.get_analytics_data()
+    return jsonify(analytics)
 
 @app.route('/api/upload-excel', methods=['POST'])
 def api_upload_excel():
@@ -504,7 +225,7 @@ def api_upload_excel():
         return jsonify({'error': 'No file selected'}), 400
 
     batch_name = request.form.get('batch_name', 'II MBA').strip()
-    action = request.form.get('action', 'import')  # 'preview' or 'import'
+    action = request.form.get('action', 'import')
 
     filename = secure_filename(file.filename)
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}")
@@ -529,9 +250,6 @@ def api_upload_excel():
 
 @app.route('/export/excel')
 def export_excel():
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
     req_date = request.args.get('date', '')
     start_date = request.args.get('start_date', '')
     end_date = request.args.get('end_date', '')
@@ -540,45 +258,17 @@ def export_excel():
     batch = request.args.get('batch', '')
     search = request.args.get('search', '')
 
-    query = '''
-        SELECT l.*, s.roll_no, s.name as student_name, s.batch, s.gender, s.mobile
-        FROM food_logs l
-        JOIN students s ON l.student_id = s.id
-        WHERE 1=1
-    '''
-    params = []
+    logs, _ = db_service.get_food_logs(
+        date=req_date,
+        start_date=start_date,
+        end_date=end_date,
+        meal_session=meal,
+        violation_type=violation,
+        batch=batch,
+        search=search,
+        limit=2000
+    )
 
-    if start_date and end_date:
-        query += ' AND l.log_date BETWEEN ? AND ?'
-        params.extend([start_date, end_date])
-    elif req_date:
-        query += ' AND l.log_date = ?'
-        params.append(req_date)
-
-    if meal and meal != 'All':
-        query += ' AND l.meal_session = ?'
-        params.append(meal)
-
-    if violation and violation != 'All':
-        query += ' AND l.violation_type = ?'
-        params.append(violation)
-
-    if batch and batch != 'All':
-        query += ' AND s.batch = ?'
-        params.append(batch)
-
-    if search:
-        query += ' AND (s.roll_no LIKE ? OR s.name LIKE ? OR l.remarks LIKE ?)'
-        like_str = f'%{search}%'
-        params.extend([like_str, like_str, like_str])
-
-    query += ' ORDER BY l.log_date DESC, l.id DESC'
-
-    cursor.execute(query, params)
-    logs = [dict(r) for r in cursor.fetchall()]
-    conn.close()
-
-    # Generate styled Excel workbook
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Magis Cafe Food Logs"
@@ -630,18 +320,18 @@ def export_excel():
 
     for idx, l in enumerate(logs, start=1):
         current_row = idx + 4
-        v_label = violation_labels.get(l['violation_type'], l['violation_type'])
+        v_label = violation_labels.get(l.get('violation_type'), l.get('violation_type', ''))
         
         row_values = [
             idx,
-            l['log_date'],
-            l['meal_session'],
-            l['roll_no'],
-            l['student_name'],
-            l['batch'],
+            l.get('log_date', ''),
+            l.get('meal_session', ''),
+            l.get('roll_no', ''),
+            l.get('student_name', ''),
+            l.get('batch', ''),
             v_label,
-            l['waste_severity'] or 'Normal',
-            l['remarks'] or '-'
+            l.get('waste_severity', 'Normal'),
+            l.get('remarks', '-') or '-'
         ]
 
         for col_idx, val in enumerate(row_values, start=1):
@@ -651,7 +341,6 @@ def export_excel():
             if idx % 2 == 0:
                 cell.fill = row_alt_fill
             
-            # Alignments
             if col_idx in [1, 2, 3, 4, 6, 8]:
                 cell.alignment = Alignment(horizontal='center', vertical='center')
             else:
@@ -659,7 +348,6 @@ def export_excel():
 
         ws.row_dimensions[current_row].height = 22
 
-    # Column Widths
     col_widths = [8, 14, 15, 16, 30, 12, 22, 16, 32]
     for i, w in enumerate(col_widths, start=1):
         ws.column_dimensions[openpyxl.utils.get_column_letter(i)].width = w
@@ -680,6 +368,7 @@ if __name__ == '__main__':
     local_ip = get_local_ip()
     print("=" * 60)
     print("  JIM - MAGIS CAFE FOOD COMMITTEE MONITORING SYSTEM")
+    print(f"  Database Engine: {db_service.DB_TYPE.upper()}")
     print("=" * 60)
     print(f" * Local PC Access:    http://127.0.0.1:5000")
     print(f" * Mobile Phone Access: http://{local_ip}:5000")

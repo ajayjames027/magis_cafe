@@ -1,8 +1,7 @@
 import os
 import openpyxl
-import sqlite3
 import re
-from database import get_db_connection
+from db_service import create_or_update_student, get_students
 
 def normalize_header(header):
     if not header:
@@ -94,7 +93,7 @@ def preview_excel_file(filepath):
 
 def import_students_from_excel(filepath, default_batch='I MBA', custom_mapping=None):
     """
-    Imports students from an Excel file into the SQLite database.
+    Imports students from an Excel file into the database (MongoDB or SQLite).
     """
     if not os.path.exists(filepath):
         raise FileNotFoundError(f"File not found: {filepath}")
@@ -123,7 +122,6 @@ def import_students_from_excel(filepath, default_batch='I MBA', custom_mapping=N
 
     # Fallbacks if detection missed
     if col_map.get('roll_no') is None:
-        # Default to col 1 if col 0 is SNO
         if len(headers) > 1 and normalize_header(headers[0]) in ['sno', 'slno', 'no']:
             col_map['roll_no'] = 1
         else:
@@ -135,13 +133,13 @@ def import_students_from_excel(filepath, default_batch='I MBA', custom_mapping=N
         else:
             col_map['name'] = 1
 
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
     imported = 0
     updated = 0
     skipped = 0
     errors = []
+
+    # Get existing roll numbers to track imported vs updated count
+    existing_rolls = set(s['roll_no'] for s in get_students())
 
     data_rows = rows[header_idx + 1:]
 
@@ -156,49 +154,36 @@ def import_students_from_excel(filepath, default_batch='I MBA', custom_mapping=N
             gender_idx = col_map.get('gender')
             batch_idx = col_map.get('batch')
 
-            roll_val = str(r[roll_idx] or '').strip() if roll_idx is not None and roll_idx < len(r) else ''
-            name_val = str(r[name_idx] or '').strip() if name_idx is not None and name_idx < len(r) else ''
+            roll_val = str(r[roll_idx] or '').strip().upper() if roll_idx is not None and roll_idx < len(r) else ''
+            name_val = str(r[name_idx] or '').strip().upper() if name_idx is not None and name_idx < len(r) else ''
 
             if not roll_val or not name_val:
                 skipped += 1
                 continue
 
             mobile_val = str(r[mobile_idx] or '').strip() if mobile_idx is not None and mobile_idx < len(r) else ''
-            # Handle float representation of mobile numbers from excel
             if mobile_val.endswith('.0'):
                 mobile_val = mobile_val[:-2]
 
             gender_val = str(r[gender_idx] or '').strip().upper() if gender_idx is not None and gender_idx < len(r) else ''
             if gender_val:
-                gender_val = gender_val[0]  # 'M' or 'F'
+                gender_val = gender_val[0]
 
             batch_val = default_batch
             if batch_idx is not None and batch_idx < len(r) and r[batch_idx]:
                 batch_val = str(r[batch_idx]).strip()
 
-            # Insert or Update
-            cursor.execute('SELECT id FROM students WHERE roll_no = ?', (roll_val,))
-            existing = cursor.fetchone()
+            is_update = roll_val in existing_rolls
+            create_or_update_student(roll_val, name_val, batch_val, mobile_val, gender_val)
 
-            if existing:
-                cursor.execute('''
-                    UPDATE students 
-                    SET name = ?, batch = ?, mobile = ?, gender = ?
-                    WHERE id = ?
-                ''', (name_val, batch_val, mobile_val, gender_val, existing['id']))
+            if is_update:
                 updated += 1
             else:
-                cursor.execute('''
-                    INSERT INTO students (roll_no, name, batch, mobile, gender)
-                    VALUES (?, ?, ?, ?, ?)
-                ''', (roll_val, name_val, batch_val, mobile_val, gender_val))
                 imported += 1
+                existing_rolls.add(roll_val)
 
         except Exception as e:
             errors.append(f"Row {line_num}: {str(e)}")
-
-    conn.commit()
-    conn.close()
 
     return {
         'imported': imported,
