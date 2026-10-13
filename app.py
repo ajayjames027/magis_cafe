@@ -12,9 +12,14 @@ import db_service
 from db_service import DB_TYPE, MONGO_URI
 from importer import preview_excel_file, import_students_from_excel
 
-app = Flask(__name__)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+app = Flask(
+    __name__,
+    template_folder=os.path.join(BASE_DIR, 'templates'),
+    static_folder=os.path.join(BASE_DIR, 'static')
+)
 app.secret_key = os.environ.get('SECRET_KEY', 'jim_magis_cafe_secret_key_2026_academic')
-app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
+app.config['UPLOAD_FOLDER'] = os.path.join(BASE_DIR, 'uploads')
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
