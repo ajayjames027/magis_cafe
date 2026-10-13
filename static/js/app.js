@@ -17,6 +17,8 @@ let appState = {
   noteModalViolationType: 'waste_food',
   noteModalSeverity: 'Normal',
   mobileUrl: '',
+  currentUser: null,
+  currentDossierStudent: null,
   charts: {}
 };
 
@@ -50,18 +52,18 @@ function startClock() {
 
 function setupKeyboardShortcuts() {
   document.addEventListener('keydown', (e) => {
-    // Press '/' to focus search input if not in a textarea/input
     if (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
       e.preventDefault();
       const searchInput = document.getElementById('studentSearchInput');
       if (searchInput) searchInput.focus();
     }
-    // Escape to close modals
     if (e.key === 'Escape') {
       closeQuickNoteModal();
       closeUploadModal();
       closeAddStudentModal();
       closeMobileModal();
+      closeStudentSummaryModal();
+      closeUserManagementModal();
     }
   });
 }
@@ -71,27 +73,62 @@ function setupKeyboardShortcuts() {
 async function fetchSessionInfo() {
   try {
     const res = await fetch('/api/session-info');
+    if (res.status === 401) {
+      window.location.href = '/login';
+      return;
+    }
     const data = await res.json();
     
     appState.selectedDate = data.current_date;
     appState.currentMeal = data.detected_meal;
     appState.mobileUrl = data.mobile_url;
 
-    // Update header badge
     const badge = document.getElementById('headerCurrentMealBadge');
     if (badge) badge.textContent = `${data.detected_meal} (${data.current_time})`;
 
-    // Update date picker
     const datePicker = document.getElementById('selectedLogDate');
     if (datePicker) datePicker.value = data.current_date;
 
-    // Highlight current meal pill
     selectMealSession(data.detected_meal, false);
-
-    // Setup mobile access modal QR code
     setupQrCode(data.mobile_url);
-
     updateSessionTitle();
+
+    // User profile in navbar
+    if (data.current_user) {
+      appState.currentUser = data.current_user;
+      const nameEl = document.getElementById('navUserFullName');
+      const roleEl = document.getElementById('navUserRoleBadge');
+      const iconEl = document.getElementById('userRoleIconContainer');
+
+      if (nameEl) nameEl.textContent = data.current_user.full_name || data.current_user.username;
+      
+      const roleTitles = {
+        'admin': 'Admin (Warden)',
+        'food_committee': 'Committee',
+        'staff': 'Staff'
+      };
+      const roleIcons = {
+        'admin': '🎓',
+        'food_committee': '🍽️',
+        'staff': '📋'
+      };
+      if (roleEl) roleEl.textContent = roleTitles[data.current_user.role] || data.current_user.role;
+      if (iconEl) iconEl.textContent = roleIcons[data.current_user.role] || '👤';
+
+      const adminBtn = document.getElementById('adminManageUsersBtn');
+      if (adminBtn) {
+        if (data.current_user.role === 'admin') {
+          adminBtn.classList.remove('hidden');
+        } else {
+          adminBtn.classList.add('hidden');
+        }
+      }
+
+      // Default staff to records view
+      if (data.current_user.role === 'staff' && appState.currentTab === 'logger') {
+        switchTab('records');
+      }
+    }
   } catch (err) {
     console.error('Error fetching session info:', err);
   }
@@ -154,22 +191,18 @@ function onDateChanged() {
 function switchTab(tabId) {
   appState.currentTab = tabId;
 
-  // Toggle active class on desktop tabs
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active-tab'));
   const activeTabBtn = document.getElementById(`tabBtn-${tabId}`);
   if (activeTabBtn) activeTabBtn.classList.add('active-tab');
 
-  // Toggle active class on mobile tabs
   document.querySelectorAll('.mobile-tab').forEach(t => t.classList.remove('active-tab'));
   const activeMobileTab = document.getElementById(`mTabBtn-${tabId}`);
   if (activeMobileTab) activeMobileTab.classList.add('active-tab');
 
-  // Show/Hide section containers
   document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
   const targetSection = document.getElementById(`tab-${tabId}`);
   if (targetSection) targetSection.classList.remove('hidden');
 
-  // Tab specific refreshes
   if (tabId === 'records') {
     loadRecords();
   } else if (tabId === 'analytics') {
@@ -191,7 +224,6 @@ async function loadBatches() {
     const res = await fetch('/api/batches');
     const batches = await res.json();
     
-    // Update batch pills in logger
     const group = document.getElementById('loggerBatchFilterGroup');
     if (group) {
       let html = `<button onclick="setBatchFilter('All')" class="batch-filter-btn active-batch px-3 py-1.5 text-xs font-bold rounded-lg transition" data-batch="All">All</button>`;
@@ -201,7 +233,6 @@ async function loadBatches() {
       group.innerHTML = html;
     }
 
-    // Update batch filter in records dropdown
     const recSelect = document.getElementById('recordsBatchFilter');
     if (recSelect) {
       let optHtml = `<option value="All">All Batches</option>`;
@@ -248,11 +279,9 @@ function filterStudents() {
   }
 
   appState.filteredStudents = appState.students.filter(s => {
-    // Batch filter
     if (appState.selectedBatch !== 'All' && s.batch !== appState.selectedBatch) {
       return false;
     }
-    // Search query
     if (query) {
       const matchRoll = s.roll_no.toLowerCase().includes(query);
       const matchName = s.name.toLowerCase().includes(query);
@@ -318,47 +347,53 @@ function renderStudentsList() {
         <!-- Left: Student Info & Checkbox -->
         <div class="flex items-center gap-3 flex-1 min-w-0">
           ${appState.bulkMode ? `
-            <input type="checkbox" onchange="toggleSelectStudent(${st.id}, this.checked)" ${isSelected ? 'checked' : ''} class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer">
+            <input type="checkbox" onchange="toggleSelectStudent('${st.id}', this.checked)" ${isSelected ? 'checked' : ''} class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer">
           ` : ''}
 
-          <div class="w-10 h-10 rounded-xl ${st.gender === 'F' ? 'bg-pink-100 text-pink-700' : 'bg-blue-100 text-blue-700'} font-black text-xs flex items-center justify-center flex-shrink-0">
+          <div onclick="openStudentSummary('${st.roll_no}')" title="Click to view summary dossier" class="cursor-pointer w-10 h-10 rounded-xl ${st.gender === 'F' ? 'bg-pink-100 text-pink-700' : 'bg-blue-100 text-blue-700'} font-black text-xs flex items-center justify-center flex-shrink-0 hover:scale-105 transition">
             ${st.roll_no.slice(-3)}
           </div>
 
           <div class="min-w-0 flex-1">
             <div class="flex items-center gap-2 flex-wrap">
-              <span class="font-mono font-bold text-slate-900 text-xs px-1.5 py-0.5 bg-slate-100 rounded">${st.roll_no}</span>
+              <span onclick="openStudentSummary('${st.roll_no}')" class="cursor-pointer font-mono font-bold text-slate-900 text-xs px-1.5 py-0.5 bg-slate-100 hover:bg-indigo-100 hover:text-indigo-800 rounded transition">${st.roll_no}</span>
               <span class="text-xs font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.2 rounded">${st.batch}</span>
               ${badgeHtml}
             </div>
-            <h4 class="text-xs sm:text-sm font-bold text-slate-800 truncate mt-0.5">${st.name}</h4>
+            <h4 onclick="openStudentSummary('${st.roll_no}')" class="cursor-pointer text-xs sm:text-sm font-bold text-slate-800 hover:text-indigo-600 truncate mt-0.5 transition">${st.name}</h4>
           </div>
         </div>
 
         <!-- Right: Action Buttons -->
         <div class="flex items-center gap-1.5 flex-shrink-0 self-end sm:self-center">
-          <button type="button" onclick="logStudentFast(${st.id}, 'eat_in_hand', '${escapeHtml(st.name)}', '${st.roll_no}')" 
+          <button type="button" onclick="logStudentFast('${st.id}', 'eat_in_hand', '${escapeHtml(st.name)}', '${st.roll_no}')" 
             title="Mark Eat in Hand" 
             class="btn-hand px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1">
             <span>🖐️</span>
             <span class="hidden sm:inline">Hand</span>
           </button>
           
-          <button type="button" onclick="logStudentFast(${st.id}, 'waste_food', '${escapeHtml(st.name)}', '${st.roll_no}')" 
+          <button type="button" onclick="logStudentFast('${st.id}', 'waste_food', '${escapeHtml(st.name)}', '${st.roll_no}')" 
             title="Mark Wasted Food" 
             class="btn-waste px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1">
             <span>🗑️</span>
             <span class="hidden sm:inline">Waste</span>
           </button>
           
-          <button type="button" onclick="logStudentFast(${st.id}, 'both', '${escapeHtml(st.name)}', '${st.roll_no}')" 
+          <button type="button" onclick="logStudentFast('${st.id}', 'both', '${escapeHtml(st.name)}', '${st.roll_no}')" 
             title="Mark Both (Hand + Waste)" 
             class="btn-both px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1">
             <span>⚠️</span>
             <span class="hidden sm:inline">Both</span>
           </button>
 
-          <button type="button" onclick="openQuickNoteModal(${st.id}, '${escapeHtml(st.name)}', '${st.roll_no}')" 
+          <button type="button" onclick="openStudentSummary('${st.roll_no}')" 
+            title="Student Dossier & History" 
+            class="p-1.5 text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 rounded-lg transition">
+            <i data-lucide="file-text" class="w-4 h-4"></i>
+          </button>
+
+          <button type="button" onclick="openQuickNoteModal('${st.id}', '${escapeHtml(st.name)}', '${st.roll_no}')" 
             title="Add details or custom note" 
             class="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition">
             <i data-lucide="message-square-plus" class="w-4 h-4"></i>
@@ -403,7 +438,6 @@ async function logStudentFast(studentId, violationType, studentName, rollNo) {
       const newLogId = data.created_ids[0];
       showToast(`Logged ${rollNo} (${studentName}) for ${vLabels[violationType]}`, 'success', () => undoLog(newLogId, studentName));
 
-      // Refresh student status badge & live feed
       loadStudents();
       loadRecentLogs();
     } else {
@@ -427,6 +461,240 @@ async function undoLog(logId, studentName) {
     }
   } catch (err) {
     console.error('Error undoing log:', err);
+  }
+}
+
+// ------------------- STUDENT SUMMARY DOSSIER MODAL ------------------- //
+
+async function openStudentSummary(studentIdOrRoll) {
+  try {
+    const res = await fetch(`/api/students/${encodeURIComponent(studentIdOrRoll)}/summary`);
+    const data = await res.json();
+
+    if (!res.ok || data.error) {
+      showToast(data.error || 'Student not found', 'error');
+      return;
+    }
+
+    appState.currentDossierStudent = data.student;
+    const st = data.student;
+    const stats = data.stats;
+    const standing = data.standing;
+
+    document.getElementById('dossierAvatar').textContent = st.roll_no.slice(-3);
+    document.getElementById('dossierName').textContent = st.name;
+    document.getElementById('dossierRoll').textContent = st.roll_no;
+    document.getElementById('dossierMeta').textContent = `${st.batch} • ${st.gender === 'F' ? 'Female' : 'Male'} • Phone: ${st.mobile || 'N/A'}`;
+
+    // Standing banner
+    const banner = document.getElementById('dossierStandingBanner');
+    const icon = document.getElementById('dossierStandingIcon');
+    const title = document.getElementById('dossierStandingTitle');
+    const desc = document.getElementById('dossierStandingDesc');
+    const badge = document.getElementById('dossierStandingBadge');
+
+    title.textContent = standing.title;
+    desc.textContent = standing.description;
+
+    if (standing.level === 'clean') {
+      banner.className = 'p-3.5 rounded-2xl border bg-emerald-50 border-emerald-200 text-emerald-950 flex items-center justify-between gap-3';
+      icon.textContent = '🟢';
+      badge.className = 'px-2.5 py-1 rounded-full text-xs font-bold uppercase bg-emerald-200 text-emerald-900';
+      badge.textContent = 'Good';
+    } else if (standing.level === 'notice') {
+      banner.className = 'p-3.5 rounded-2xl border bg-amber-50 border-amber-200 text-amber-950 flex items-center justify-between gap-3';
+      icon.textContent = '🟡';
+      badge.className = 'px-2.5 py-1 rounded-full text-xs font-bold uppercase bg-amber-200 text-amber-900';
+      badge.textContent = '1 Notice';
+    } else if (standing.level === 'warning') {
+      banner.className = 'p-3.5 rounded-2xl border bg-orange-50 border-orange-200 text-orange-950 flex items-center justify-between gap-3';
+      icon.textContent = '🟠';
+      badge.className = 'px-2.5 py-1 rounded-full text-xs font-bold uppercase bg-orange-200 text-orange-900';
+      badge.textContent = 'Warning';
+    } else {
+      banner.className = 'p-3.5 rounded-2xl border bg-rose-50 border-rose-300 text-rose-950 flex items-center justify-between gap-3';
+      icon.textContent = '🔴';
+      badge.className = 'px-2.5 py-1 rounded-full text-xs font-bold uppercase bg-rose-200 text-rose-900';
+      badge.textContent = 'Action Required';
+    }
+
+    // Stats
+    document.getElementById('dossierTotalCount').textContent = stats.total_violations;
+    document.getElementById('dossierHandCount').textContent = stats.hand_count;
+    document.getElementById('dossierWasteCount').textContent = stats.waste_count;
+    document.getElementById('dossierLastDate').textContent = stats.last_violation_date || 'None';
+    document.getElementById('dossierActiveMealLabel').textContent = `${appState.currentMeal} Session`;
+
+    // Timeline list
+    const timeline = document.getElementById('dossierTimelineList');
+    if (data.logs.length === 0) {
+      timeline.innerHTML = `
+        <div class="p-6 text-center text-slate-400 bg-slate-50 rounded-2xl border border-slate-100 text-xs">
+          <i data-lucide="check-circle" class="w-8 h-8 text-emerald-500 mx-auto mb-2"></i>
+          <p class="font-bold text-slate-700">Clean Mess Discipline Record</p>
+          <p class="text-[11px] mt-0.5">No infractions recorded for this student.</p>
+        </div>
+      `;
+    } else {
+      let tHtml = '';
+      data.logs.forEach(l => {
+        let vBadge = '';
+        if (l.violation_type === 'eat_in_hand') {
+          vBadge = `<span class="bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded text-[10px]">🖐️ Eat in Hand</span>`;
+        } else if (l.violation_type === 'waste_food') {
+          vBadge = `<span class="bg-rose-100 text-rose-800 font-bold px-2 py-0.5 rounded text-[10px]">🗑️ Food Waste</span>`;
+        } else {
+          vBadge = `<span class="bg-purple-100 text-purple-800 font-bold px-2 py-0.5 rounded text-[10px]">⚠️ Both</span>`;
+        }
+
+        tHtml += `
+          <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs hover:bg-slate-100 transition">
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-2">
+                <span class="font-bold text-slate-800">${l.log_date}</span>
+                <span class="font-bold text-indigo-700 text-[11px]">${l.meal_session}</span>
+                ${vBadge}
+              </div>
+              <div class="text-[11px] text-slate-500 mt-0.5">
+                ${l.remarks ? `"${l.remarks}" &bull; ` : ''}Logged by: ${l.logged_by || 'Food Committee'}
+              </div>
+            </div>
+            <button onclick="undoLog('${l.id}', '${escapeHtml(st.name)}'); openStudentSummary('${st.roll_no}')" title="Delete entry" class="p-1 text-slate-300 hover:text-rose-600 rounded">
+              <i data-lucide="trash-2" class="w-4 h-4"></i>
+            </button>
+          </div>
+        `;
+      });
+      timeline.innerHTML = tHtml;
+    }
+
+    document.getElementById('studentSummaryModal').classList.remove('hidden');
+    initIcons();
+  } catch (err) {
+    console.error('Error fetching student summary:', err);
+    showToast('Failed to load student dossier', 'error');
+  }
+}
+
+function closeStudentSummaryModal() {
+  document.getElementById('studentSummaryModal').classList.add('hidden');
+  appState.currentDossierStudent = null;
+}
+
+async function logFromDossier(violationType) {
+  if (!appState.currentDossierStudent) return;
+  const st = appState.currentDossierStudent;
+  await logStudentFast(st.id, violationType, st.name, st.roll_no);
+  await openStudentSummary(st.roll_no);
+}
+
+// ------------------- USER MANAGEMENT MODAL (ADMIN) ------------------- //
+
+async function openUserManagementModal() {
+  document.getElementById('userManagementModal').classList.remove('hidden');
+  await loadUsersList();
+}
+
+function closeUserManagementModal() {
+  document.getElementById('userManagementModal').classList.add('hidden');
+}
+
+async function loadUsersList() {
+  const container = document.getElementById('usersListContainer');
+  if (!container) return;
+
+  try {
+    const res = await fetch('/api/users');
+    const users = await res.json();
+
+    if (!res.ok || users.length === 0) {
+      container.innerHTML = `<div class="text-xs text-slate-400 py-3 text-center">No users found.</div>`;
+      return;
+    }
+
+    const roleBadges = {
+      'admin': '<span class="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-full">🎓 Admin</span>',
+      'food_committee': '<span class="bg-indigo-100 text-indigo-900 border border-indigo-300 text-[10px] font-bold px-2 py-0.5 rounded-full">🍽️ Food Committee</span>',
+      'staff': '<span class="bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded-full">📋 Staff</span>'
+    };
+
+    let html = '';
+    users.forEach(u => {
+      html += `
+        <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="font-mono font-bold text-slate-900">${u.username}</span>
+              ${roleBadges[u.role] || u.role}
+            </div>
+            <div class="text-[11px] text-slate-500 mt-0.5">${u.full_name}</div>
+          </div>
+          ${u.username !== 'admin' ? `
+            <button onclick="handleDeleteUser('${u.id}', '${u.username}')" title="Delete User" class="p-1 text-slate-300 hover:text-rose-600 rounded">
+              <i data-lucide="trash-2" class="w-4 h-4"></i>
+            </button>
+          ` : '<span class="text-[10px] text-slate-400 font-bold px-2">Primary</span>'}
+        </div>
+      `;
+    });
+
+    container.innerHTML = html;
+    initIcons();
+  } catch (err) {
+    console.error('Error loading users:', err);
+  }
+}
+
+async function handleCreateUser(e) {
+  e.preventDefault();
+  const username = document.getElementById('newUsername').value.trim();
+  const fullName = document.getElementById('newFullName').value.trim();
+  const role = document.getElementById('newUserRole').value;
+  const password = document.getElementById('newUserPassword').value;
+
+  const btn = document.getElementById('saveUserBtn');
+  btn.disabled = true;
+  btn.innerHTML = `<span>Creating...</span>`;
+
+  try {
+    const res = await fetch('/api/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, full_name: fullName, role, password })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(`User account '${username}' created!`, 'success');
+      document.getElementById('newUsername').value = '';
+      document.getElementById('newFullName').value = '';
+      document.getElementById('newUserPassword').value = '';
+      loadUsersList();
+    } else {
+      showToast(data.error || 'Failed to create user', 'error');
+    }
+  } catch (err) {
+    showToast('Network error while saving user', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<i data-lucide="plus" class="w-4 h-4"></i><span>Create Account</span>`;
+    initIcons();
+  }
+}
+
+async function handleDeleteUser(userId, username) {
+  if (!confirm(`Are you sure you want to remove user '${username}'?`)) return;
+
+  try {
+    const res = await fetch(`/api/users/${userId}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (data.success) {
+      showToast(`Removed user ${username}`, 'info');
+      loadUsersList();
+    } else {
+      showToast(data.error || 'Failed to delete user', 'error');
+    }
+  } catch (err) {
+    console.error('Delete user error:', err);
   }
 }
 
@@ -514,7 +782,6 @@ async function loadRecentLogs() {
     const data = await res.json();
     appState.recentLogs = data.logs || [];
 
-    // Update Mini Summary card
     const summary = data.summary || {};
     document.getElementById('quickStatsTotal').textContent = summary.total || 0;
     document.getElementById('quickStatsHand').textContent = (summary.eat_in_hand || 0) + (summary.both || 0);
@@ -558,15 +825,15 @@ function renderRecentActivityFeed() {
       <div class="bg-slate-50 border border-slate-200 rounded-xl p-2.5 flex items-center justify-between text-xs hover:bg-slate-100 transition">
         <div class="min-w-0 flex-1 pr-2">
           <div class="flex items-center gap-1.5">
-            <span class="font-mono font-bold text-slate-900">${l.roll_no}</span>
+            <span onclick="openStudentSummary('${l.roll_no}')" class="cursor-pointer font-mono font-bold text-slate-900 hover:text-indigo-600 transition">${l.roll_no}</span>
             ${vBadge}
             ${l.remarks ? `<span class="text-[10px] text-slate-400 italic truncate max-w-[120px]">"${l.remarks}"</span>` : ''}
           </div>
-          <div class="text-slate-600 font-medium truncate text-[11px] mt-0.5">${l.student_name}</div>
+          <div onclick="openStudentSummary('${l.roll_no}')" class="cursor-pointer text-slate-600 font-medium truncate text-[11px] mt-0.5 hover:text-indigo-600 transition">${l.student_name}</div>
         </div>
         <div class="flex items-center gap-1">
           <span class="text-[10px] font-mono text-slate-400 mr-1">${timeStr}</span>
-          <button onclick="undoLog(${l.id}, '${escapeHtml(l.student_name)}')" title="Undo / Delete" class="p-1 text-slate-300 hover:text-rose-600 rounded">
+          <button onclick="undoLog('${l.id}', '${escapeHtml(l.student_name)}')" title="Undo / Delete" class="p-1 text-slate-300 hover:text-rose-600 rounded">
             <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
           </button>
         </div>
@@ -585,7 +852,6 @@ function openQuickNoteModal(studentId, name, rollNo) {
   document.getElementById('noteModalStudentName').textContent = name;
   document.getElementById('noteModalStudentRoll').textContent = `${rollNo} • ${appState.currentMeal}`;
   
-  // Reset form
   setModalViolationType('waste_food');
   setModalSeverity('Normal');
   document.getElementById('modalRemarksInput').value = '';
@@ -769,8 +1035,8 @@ function renderRecords() {
         <td class="px-4 py-2.5 font-mono text-slate-400">${idx + 1}</td>
         <td class="px-4 py-2.5 font-medium text-slate-700 whitespace-nowrap">${l.log_date}</td>
         <td class="px-4 py-2.5 font-bold text-indigo-700">${l.meal_session}</td>
-        <td class="px-4 py-2.5 font-mono font-bold text-slate-900">${l.roll_no}</td>
-        <td class="px-4 py-2.5 font-bold text-slate-800">${l.student_name}</td>
+        <td onclick="openStudentSummary('${l.roll_no}')" class="cursor-pointer px-4 py-2.5 font-mono font-bold text-slate-900 hover:text-indigo-600 transition">${l.roll_no}</td>
+        <td onclick="openStudentSummary('${l.roll_no}')" class="cursor-pointer px-4 py-2.5 font-bold text-slate-800 hover:text-indigo-600 transition">${l.student_name}</td>
         <td class="px-4 py-2.5 font-medium text-slate-600">${l.batch}</td>
         <td class="px-4 py-2.5">${vBadge}</td>
         <td class="px-4 py-2.5 text-slate-600">
@@ -780,7 +1046,7 @@ function renderRecords() {
           </div>
         </td>
         <td class="px-4 py-2.5 text-right whitespace-nowrap">
-          <button onclick="undoLog(${l.id}, '${escapeHtml(l.student_name)}')" title="Delete entry" class="text-slate-300 hover:text-rose-600 p-1 rounded">
+          <button onclick="undoLog('${l.id}', '${escapeHtml(l.student_name)}')" title="Delete entry" class="text-slate-300 hover:text-rose-600 p-1 rounded">
             <i data-lucide="trash-2" class="w-4 h-4"></i>
           </button>
         </td>
@@ -868,7 +1134,6 @@ async function loadAnalytics() {
     const res = await fetch('/api/analytics');
     const data = await res.json();
 
-    // Top KPIs
     document.getElementById('statTodayTotal').textContent = data.today.total || 0;
     document.getElementById('statTotalHand').textContent = (data.all_time.hand_count || 0) + (data.all_time.both_count || 0);
     document.getElementById('statTotalWaste').textContent = (data.all_time.waste_count || 0) + (data.all_time.both_count || 0);
@@ -888,7 +1153,7 @@ function renderLeaderboard(board) {
   if (board.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="8" class="px-4 py-8 text-center text-slate-400">
+        <td colspan="9" class="px-4 py-8 text-center text-slate-400">
           No violations recorded yet. Good job to the mess!
         </td>
       </tr>
@@ -907,28 +1172,34 @@ function renderLeaderboard(board) {
     html += `
       <tr class="hover:bg-slate-50 transition">
         <td class="px-4 py-2.5">${rankBadge}</td>
-        <td class="px-4 py-2.5 font-mono font-bold text-slate-900">${st.roll_no}</td>
-        <td class="px-4 py-2.5 font-bold text-slate-800">${st.name}</td>
+        <td onclick="openStudentSummary('${st.roll_no}')" class="cursor-pointer px-4 py-2.5 font-mono font-bold text-slate-900 hover:text-indigo-600 transition">${st.roll_no}</td>
+        <td onclick="openStudentSummary('${st.roll_no}')" class="cursor-pointer px-4 py-2.5 font-bold text-slate-800 hover:text-indigo-600 transition">${st.name}</td>
         <td class="px-4 py-2.5 text-slate-600">${st.batch}</td>
         <td class="px-4 py-2.5 text-center font-bold text-amber-600">${st.hand_violations}</td>
         <td class="px-4 py-2.5 text-center font-bold text-rose-600">${st.waste_violations}</td>
         <td class="px-4 py-2.5 text-center font-extrabold text-slate-900">${st.total_violations}</td>
         <td class="px-4 py-2.5 text-slate-400 font-mono">${st.last_violation_date || '-'}</td>
+        <td class="px-4 py-2.5 text-right">
+          <button onclick="openStudentSummary('${st.roll_no}')" class="px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-lg text-xs flex items-center gap-1 ml-auto">
+            <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
+            <span>Dossier</span>
+          </button>
+        </td>
       </tr>
     `;
   });
 
   tbody.innerHTML = html;
+  initIcons();
 }
 
 function renderCharts(data) {
-  // 1. Trend Chart
   const trendCtx = document.getElementById('trendChart');
   if (trendCtx) {
     if (appState.charts.trend) appState.charts.trend.destroy();
 
     const trends = data.daily_trends || [];
-    const labels = trends.map(t => t.log_date.slice(5)); // MM-DD
+    const labels = trends.map(t => t.log_date.slice(5));
     const handData = trends.map(t => t.hand_count);
     const wasteData = trends.map(t => t.waste_count);
 
@@ -965,7 +1236,6 @@ function renderCharts(data) {
     });
   }
 
-  // 2. Meal Pie Chart
   const mealCtx = document.getElementById('mealPieChart');
   if (mealCtx) {
     if (appState.charts.meal) appState.charts.meal.destroy();
@@ -1035,15 +1305,21 @@ async function loadDirectoryStudents() {
       html += `
         <tr class="hover:bg-slate-50 transition">
           <td class="px-4 py-2.5 font-mono text-slate-400">${idx + 1}</td>
-          <td class="px-4 py-2.5 font-mono font-bold text-slate-900">${st.roll_no}</td>
-          <td class="px-4 py-2.5 font-bold text-slate-800">${st.name}</td>
+          <td onclick="openStudentSummary('${st.roll_no}')" class="cursor-pointer px-4 py-2.5 font-mono font-bold text-slate-900 hover:text-indigo-600 transition">${st.roll_no}</td>
+          <td onclick="openStudentSummary('${st.roll_no}')" class="cursor-pointer px-4 py-2.5 font-bold text-slate-800 hover:text-indigo-600 transition">${st.name}</td>
           <td class="px-4 py-2.5 font-semibold text-indigo-700">${st.batch}</td>
           <td class="px-4 py-2.5">${st.gender || '-'}</td>
           <td class="px-4 py-2.5 font-mono text-slate-500">${st.mobile || '-'}</td>
           <td class="px-4 py-2.5 text-right whitespace-nowrap">
-            <button onclick="deleteStudent(${st.id}, '${escapeHtml(st.name)}')" title="Delete student" class="text-slate-300 hover:text-rose-600 p-1 rounded">
-              <i data-lucide="trash-2" class="w-4 h-4"></i>
+            <button onclick="openStudentSummary('${st.roll_no}')" class="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-xl text-xs inline-flex items-center gap-1 transition">
+              <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
+              <span>View Dossier</span>
             </button>
+            ${(appState.currentUser && ['admin', 'staff'].includes(appState.currentUser.role)) ? `
+              <button onclick="deleteStudent('${st.id}', '${escapeHtml(st.name)}')" title="Delete student" class="ml-1 text-slate-300 hover:text-rose-600 p-1 rounded">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+              </button>
+            ` : ''}
           </td>
         </tr>
       `;
@@ -1091,7 +1367,6 @@ function onFileSelected(input) {
   if (input.files && input.files[0]) {
     const file = input.files[0];
     document.getElementById('fileChosenLabel').textContent = `Selected: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
-    // Auto-preview
     previewSelectedExcel();
   }
 }

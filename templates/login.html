@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login | JIM - Magis Cafe Portal</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Cinzel:wght@600;700;800&display=swap');
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    .academic-serif {
+      font-family: 'Cinzel', Georgia, serif;
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col justify-between selection:bg-amber-500 selection:text-slate-900">
+
+  <!-- Subtle Top Banner -->
+  <div class="h-1.5 bg-gradient-to-r from-amber-500 via-indigo-600 to-amber-500 w-full"></div>
+
+  <!-- Main Card Container -->
+  <div class="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-8">
+    <div class="max-w-md w-full">
+      
+      <!-- Academic Header & Crest -->
+      <div class="text-center mb-8">
+        <div class="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-800 to-indigo-950 border-2 border-amber-400/40 shadow-2xl shadow-indigo-950/80 mb-4 ring-8 ring-indigo-900/30">
+          <span class="academic-serif text-2xl font-black tracking-widest text-amber-400">JIM</span>
+        </div>
+        <h1 class="text-xl sm:text-2xl font-black tracking-tight text-white uppercase academic-serif">
+          St. Joseph's Institute of Management
+        </h1>
+        <div class="flex items-center justify-center gap-2 mt-1">
+          <span class="h-px w-8 bg-amber-400/60"></span>
+          <p class="text-xs uppercase tracking-widest font-extrabold text-amber-400">Magis Cafe &bull; Mess Portal</p>
+          <span class="h-px w-8 bg-amber-400/60"></span>
+        </div>
+        <p class="text-xs text-slate-400 mt-2">Food Committee & Disciplinary Monitoring System</p>
+      </div>
+
+      <!-- Login Form Card -->
+      <div class="bg-slate-800/90 backdrop-blur-md rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-700/80">
+        
+        <!-- Error Alert Container -->
+        <div id="loginErrorAlert" class="hidden mb-5 p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2.5">
+          <i data-lucide="alert-circle" class="w-4 h-4 text-rose-400 flex-shrink-0"></i>
+          <span id="loginErrorMsg">Invalid credentials.</span>
+        </div>
+
+        <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-4">
+          
+          <!-- Username Input -->
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5" for="username">
+              Username or ID
+            </label>
+            <div class="relative">
+              <i data-lucide="user" class="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5"></i>
+              <input type="text" id="username" name="username" required autocomplete="username" autofocus
+                placeholder="e.g. admin, committee, staff" 
+                class="w-full pl-10 pr-4 py-2.5 bg-slate-900/80 border border-slate-700 rounded-xl text-sm font-medium text-white placeholder-slate-500 focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition">
+            </div>
+          </div>
+
+          <!-- Password Input -->
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-300" for="password">
+                Password
+              </label>
+            </div>
+            <div class="relative">
+              <i data-lucide="lock" class="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5"></i>
+              <input type="password" id="password" name="password" required autocomplete="current-password"
+                placeholder="Enter your security password" 
+                class="w-full pl-10 pr-10 py-2.5 bg-slate-900/80 border border-slate-700 rounded-xl text-sm font-medium text-white placeholder-slate-500 focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition">
+              <button type="button" onclick="togglePasswordVisibility()" class="absolute right-3 top-3 text-slate-400 hover:text-slate-200">
+                <i id="passwordEyeIcon" data-lucide="eye" class="w-4 h-4"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Submit Button -->
+          <div class="pt-2">
+            <button type="submit" id="submitLoginBtn" class="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-sm tracking-wide shadow-lg shadow-amber-500/20 active:scale-[0.98] transition flex items-center justify-center gap-2">
+              <i data-lucide="log-in" class="w-4 h-4"></i>
+              <span>Sign In to Portal</span>
+            </button>
+          </div>
+
+        </form>
+
+        <!-- Role Quick Switch Helper Chips -->
+        <div class="mt-6 pt-5 border-t border-slate-700/60">
+          <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2.5 text-center">
+            Quick Select Role (Demo Accounts):
+          </p>
+          <div class="grid grid-cols-3 gap-2">
+            <button type="button" onclick="fillCredentials('admin', 'admin@jim123')" class="p-2 rounded-xl bg-slate-900/60 hover:bg-slate-900 border border-slate-700/70 hover:border-amber-400/40 text-left transition flex flex-col items-center text-center">
+              <span class="text-base mb-0.5">🎓</span>
+              <span class="text-xs font-bold text-amber-400">Admin</span>
+              <span class="text-[10px] text-slate-400">Warden/Head</span>
+            </button>
+            <button type="button" onclick="fillCredentials('committee', 'magis@food')" class="p-2 rounded-xl bg-slate-900/60 hover:bg-slate-900 border border-slate-700/70 hover:border-amber-400/40 text-left transition flex flex-col items-center text-center">
+              <span class="text-base mb-0.5">🍽️</span>
+              <span class="text-xs font-bold text-indigo-300">Committee</span>
+              <span class="text-[10px] text-slate-400">Counter Duty</span>
+            </button>
+            <button type="button" onclick="fillCredentials('staff', 'jim@staff')" class="p-2 rounded-xl bg-slate-900/60 hover:bg-slate-900 border border-slate-700/70 hover:border-amber-400/40 text-left transition flex flex-col items-center text-center">
+              <span class="text-base mb-0.5">📋</span>
+              <span class="text-xs font-bold text-emerald-400">Staff</span>
+              <span class="text-[10px] text-slate-400">Mess Supervisor</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Trust & Cloud Sync Pill -->
+      <div class="mt-6 flex items-center justify-center gap-2 text-xs text-slate-500">
+        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+        <span>Connected to <strong>MongoDB Atlas Cloud</strong></span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Institutional Footer -->
+  <footer class="text-center py-4 text-xs text-slate-500 border-t border-slate-800">
+    <p>&copy; 2026 St. Joseph's Institute of Management &bull; Magis Cafe Food Committee</p>
+    <p class="text-[11px] text-slate-600 mt-0.5">Discipline &bull; Quality &bull; Zero Food Waste Stewardship</p>
+  </footer>
+
+  <script>
+    if (window.lucide) {
+      window.lucide.createIcons();
+    }
+
+    function togglePasswordVisibility() {
+      const pwd = document.getElementById('password');
+      const icon = document.getElementById('passwordEyeIcon');
+      if (pwd.type === 'password') {
+        pwd.type = 'text';
+        icon.setAttribute('data-lucide', 'eye-off');
+      } else {
+        pwd.type = 'password';
+        icon.setAttribute('data-lucide', 'eye');
+      }
+      if (window.lucide) window.lucide.createIcons();
+    }
+
+    function fillCredentials(u, p) {
+      document.getElementById('username').value = u;
+      document.getElementById('password').value = p;
+      document.getElementById('loginErrorAlert').classList.add('hidden');
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+      const submitBtn = document.getElementById('submitLoginBtn');
+      const errAlert = document.getElementById('loginErrorAlert');
+      const errMsg = document.getElementById('loginErrorMsg');
+
+      errAlert.classList.add('hidden');
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `<span>Signing in...</span>`;
+
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          window.location.href = '/';
+        } else {
+          errMsg.textContent = data.error || 'Invalid username or password.';
+          errAlert.classList.remove('hidden');
+        }
+      } catch (err) {
+        errMsg.textContent = 'Connection error. Please try again.';
+        errAlert.classList.remove('hidden');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = `<i data-lucide="log-in" class="w-4 h-4"></i><span>Sign In to Portal</span>`;
+        if (window.lucide) window.lucide.createIcons();
+      }
+    }
+  </script>
+</body>
+</html>

@@ -2,16 +2,18 @@ import os
 import io
 import socket
 from datetime import datetime, date, timedelta
-from flask import Flask, render_template, request, jsonify, send_file
+from flask import Flask, render_template, request, jsonify, send_file, session, redirect, url_for
+from werkzeug.security import check_password_hash
+from werkzeug.utils import secure_filename
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-from werkzeug.utils import secure_filename
 
 import db_service
 from db_service import DB_TYPE, MONGO_URI
 from importer import preview_excel_file, import_students_from_excel
 
 app = Flask(__name__)
+app.secret_key = os.environ.get('SECRET_KEY', 'jim_magis_cafe_secret_key_2026_academic')
 app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB
 
@@ -47,14 +49,30 @@ def get_current_meal_session():
     else:
         return 'Dinner' if minutes >= 1140 else 'Breakfast'
 
-# ----------------- PAGE ROUTES ----------------- #
+# ----------------- PAGE ROUTES & AUTH GUARDS ----------------- #
+
+@app.route('/login')
+def login_page():
+    if session.get('user_id'):
+        return redirect(url_for('index'))
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login_page'))
 
 @app.route('/')
 def index():
+    if not session.get('user_id'):
+        return redirect(url_for('login_page'))
     return render_template('index.html')
 
 @app.route('/report/print')
 def print_report():
+    if not session.get('user_id'):
+        return redirect(url_for('login_page'))
+
     req_date = request.args.get('date', date.today().isoformat())
     start_date = request.args.get('start_date', '')
     end_date = request.args.get('end_date', '')
@@ -87,7 +105,83 @@ def print_report():
         generated_at=datetime.now().strftime('%d %b %Y, %I:%M %p')
     )
 
-# ----------------- API ROUTES ----------------- #
+# ----------------- AUTHENTICATION APIS ----------------- #
+
+@app.route('/api/login', methods=['POST'])
+def api_login():
+    data = request.get_json() or {}
+    username = data.get('username', '').strip()
+    password = data.get('password', '')
+
+    if not username or not password:
+        return jsonify({'error': 'Please provide both username and password.'}), 400
+
+    user = db_service.get_user_by_username(username)
+    if not user or not check_password_hash(user['password_hash'], password):
+        return jsonify({'error': 'Invalid username or password.'}), 401
+
+    session['user_id'] = str(user['id'])
+    session['username'] = user['username']
+    session['role'] = user['role']
+    session['full_name'] = user['full_name']
+
+    return jsonify({
+        'success': True,
+        'user': {
+            'username': user['username'],
+            'role': user['role'],
+            'full_name': user['full_name']
+        }
+    })
+
+@app.route('/api/me')
+def api_me():
+    if not session.get('user_id'):
+        return jsonify({'is_authenticated': False}), 401
+    return jsonify({
+        'is_authenticated': True,
+        'user_id': session.get('user_id'),
+        'username': session.get('username'),
+        'role': session.get('role'),
+        'full_name': session.get('full_name')
+    })
+
+@app.route('/api/users', methods=['GET'])
+def api_get_users():
+    if session.get('role') != 'admin':
+        return jsonify({'error': 'Administrator access required.'}), 403
+    users = db_service.list_users()
+    return jsonify(users)
+
+@app.route('/api/users', methods=['POST'])
+def api_create_user():
+    if session.get('role') != 'admin':
+        return jsonify({'error': 'Administrator access required.'}), 403
+    data = request.get_json() or {}
+    username = data.get('username', '').strip()
+    password = data.get('password', '').strip()
+    full_name = data.get('full_name', '').strip()
+    role = data.get('role', 'food_committee').strip()
+
+    if not username or not password or not full_name:
+        return jsonify({'error': 'All fields are required.'}), 400
+
+    try:
+        user_id = db_service.create_user(username, password, full_name, role)
+        return jsonify({'success': True, 'id': str(user_id), 'message': f'User {username} created successfully.'})
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/users/<user_id>', methods=['DELETE'])
+def api_delete_user(user_id):
+    if session.get('role') != 'admin':
+        return jsonify({'error': 'Administrator access required.'}), 403
+    db_service.delete_user(user_id)
+    return jsonify({'success': True, 'message': 'User removed.'})
+
+# ----------------- SYSTEM & CORE APIS ----------------- #
 
 @app.route('/api/session-info')
 def api_session_info():
@@ -100,7 +194,12 @@ def api_session_info():
         'local_ip': ip,
         'local_port': port,
         'mobile_url': f"http://{ip}:{port}",
-        'database_type': 'MongoDB Atlas' if ('mongodb+srv' in MONGO_URI) else ('MongoDB Local' if DB_TYPE == 'mongo' else 'SQLite')
+        'database_type': 'MongoDB Atlas' if ('mongodb+srv' in MONGO_URI) else ('MongoDB Local' if DB_TYPE == 'mongo' else 'SQLite'),
+        'current_user': {
+            'username': session.get('username', 'Guest'),
+            'role': session.get('role', 'guest'),
+            'full_name': session.get('full_name', 'Visitor')
+        }
     })
 
 @app.route('/api/batches')
@@ -123,6 +222,13 @@ def api_students():
     )
     return jsonify(students)
 
+@app.route('/api/students/<student_id_or_roll>/summary')
+def api_student_summary(student_id_or_roll):
+    summary = db_service.get_student_summary(student_id_or_roll)
+    if not summary:
+        return jsonify({'error': 'Student not found.'}), 404
+    return jsonify(summary)
+
 @app.route('/api/students', methods=['POST'])
 def api_create_student():
     data = request.get_json() or {}
@@ -143,6 +249,8 @@ def api_create_student():
 
 @app.route('/api/students/<student_id>', methods=['DELETE'])
 def api_delete_student(student_id):
+    if session.get('role') not in ('admin', 'staff'):
+        return jsonify({'error': 'Permission denied.'}), 403
     db_service.delete_student(student_id)
     return jsonify({'success': True, 'message': 'Student removed successfully.'})
 
@@ -182,7 +290,7 @@ def api_create_logs():
     violation_type = data.get('violation_type', 'waste_food')
     waste_severity = data.get('waste_severity', 'Normal')
     remarks = data.get('remarks', '').strip()
-    logged_by = data.get('logged_by', 'Food Committee')
+    logged_by = session.get('full_name') or 'Food Committee'
 
     if not student_ids:
         return jsonify({'error': 'No students selected'}), 400
@@ -217,6 +325,9 @@ def api_analytics():
 
 @app.route('/api/upload-excel', methods=['POST'])
 def api_upload_excel():
+    if session.get('role') not in ('admin', 'staff'):
+        return jsonify({'error': 'Administrator or Staff permission required.'}), 403
+
     if 'file' not in request.files:
         return jsonify({'error': 'No file uploaded'}), 400
 

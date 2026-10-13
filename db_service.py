@@ -83,7 +83,9 @@ def init_db():
         mongo_db.food_logs.create_index('meal_session')
         mongo_db.food_logs.create_index('violation_type')
         mongo_db.food_logs.create_index('roll_no')
+        mongo_db.users.create_index('username', unique=True)
         seed_students_if_empty()
+        seed_users_if_empty()
     else:
         conn = get_sqlite_conn()
         cursor = conn.cursor()
@@ -113,15 +115,28 @@ def init_db():
                 FOREIGN KEY (student_id) REFERENCES students (id) ON DELETE CASCADE
             )
         ''')
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                full_name TEXT NOT NULL,
+                role TEXT NOT NULL DEFAULT 'food_committee',
+                is_active INTEGER DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_students_roll ON students(roll_no)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_students_batch ON students(batch)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_logs_date ON food_logs(log_date)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_logs_student ON food_logs(student_id)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_logs_meal ON food_logs(meal_session)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_logs_violation ON food_logs(violation_type)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)')
         conn.commit()
         conn.close()
         seed_students_if_empty()
+        seed_users_if_empty()
 
 def seed_students_if_empty():
     count = 0
@@ -398,6 +413,7 @@ def get_food_logs(date='', start_date='', end_date='', meal_session='', violatio
         logs = []
         for doc in cursor:
             doc['id'] = str(doc['_id'])
+            doc['_id'] = str(doc['_id'])
             logs.append(doc)
 
         total_logs = len(logs)
@@ -650,3 +666,247 @@ def get_analytics_data():
             'leaderboard': leaderboard,
             'daily_trends': daily_trends
         }
+
+def seed_users_if_empty():
+    from werkzeug.security import generate_password_hash
+    default_users = [
+        {
+            'username': 'admin',
+            'password': 'admin@jim123',
+            'full_name': 'Prof. Warden / Mess Administrator',
+            'role': 'admin'
+        },
+        {
+            'username': 'committee',
+            'password': 'magis@food',
+            'full_name': 'Food Committee Team',
+            'role': 'food_committee'
+        },
+        {
+            'username': 'staff',
+            'password': 'jim@staff',
+            'full_name': 'Mess Management Staff',
+            'role': 'staff'
+        }
+    ]
+
+    if DB_TYPE == 'mongo' and mongo_db is not None:
+        if mongo_db.users.count_documents({}) == 0:
+            for u in default_users:
+                mongo_db.users.insert_one({
+                    'username': u['username'],
+                    'password_hash': generate_password_hash(u['password']),
+                    'full_name': u['full_name'],
+                    'role': u['role'],
+                    'is_active': 1,
+                    'created_at': datetime.now().isoformat()
+                })
+            print(f"Seeded {len(default_users)} default users into MongoDB.")
+    else:
+        conn = get_sqlite_conn()
+        cursor = conn.cursor()
+        cursor.execute('SELECT COUNT(*) FROM users')
+        if cursor.fetchone()[0] == 0:
+            for u in default_users:
+                cursor.execute('''
+                    INSERT INTO users (username, password_hash, full_name, role)
+                    VALUES (?, ?, ?, ?)
+                ''', (u['username'], generate_password_hash(u['password']), u['full_name'], u['role']))
+            conn.commit()
+            print(f"Seeded {len(default_users)} default users into SQLite.")
+        conn.close()
+
+def get_user_by_username(username):
+    username = str(username).strip().lower()
+    if DB_TYPE == 'mongo' and mongo_db is not None:
+        user = mongo_db.users.find_one({'username': username, 'is_active': {'$ne': 0}})
+        if user:
+            user['id'] = str(user['_id'])
+            user['_id'] = str(user['_id'])
+            return user
+        return None
+    else:
+        conn = get_sqlite_conn()
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM users WHERE LOWER(username) = ? AND is_active = 1', (username,))
+        row = cursor.fetchone()
+        conn.close()
+        return dict(row) if row else None
+
+def get_user_by_id(user_id):
+    if DB_TYPE == 'mongo' and mongo_db is not None:
+        from bson import ObjectId
+        try:
+            user = mongo_db.users.find_one({'_id': ObjectId(user_id)})
+        except Exception:
+            user = mongo_db.users.find_one({'username': str(user_id)})
+        if user:
+            user['id'] = str(user['_id'])
+            user['_id'] = str(user['_id'])
+            return user
+        return None
+    else:
+        conn = get_sqlite_conn()
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM users WHERE id = ?', (user_id,))
+        row = cursor.fetchone()
+        conn.close()
+        return dict(row) if row else None
+
+def list_users():
+    if DB_TYPE == 'mongo' and mongo_db is not None:
+        users = list(mongo_db.users.find({'is_active': {'$ne': 0}}).sort('username', 1))
+        for u in users:
+            u['id'] = str(u['_id'])
+            u['_id'] = str(u['_id'])
+            u.pop('password_hash', None)
+        return users
+    else:
+        conn = get_sqlite_conn()
+        cursor = conn.cursor()
+        cursor.execute('SELECT id, username, full_name, role, is_active, created_at FROM users WHERE is_active = 1 ORDER BY username ASC')
+        users = [dict(r) for r in cursor.fetchall()]
+        conn.close()
+        return users
+
+def create_user(username, password, full_name, role='food_committee'):
+    from werkzeug.security import generate_password_hash
+    username = str(username).strip().lower()
+    full_name = str(full_name).strip()
+    role = str(role).strip().lower()
+    if role not in ('admin', 'food_committee', 'staff'):
+        role = 'food_committee'
+    
+    password_hash = generate_password_hash(password)
+
+    if DB_TYPE == 'mongo' and mongo_db is not None:
+        existing = mongo_db.users.find_one({'username': username})
+        if existing:
+            raise ValueError(f"Username '{username}' already exists.")
+        res = mongo_db.users.insert_one({
+            'username': username,
+            'password_hash': password_hash,
+            'full_name': full_name,
+            'role': role,
+            'is_active': 1,
+            'created_at': datetime.now().isoformat()
+        })
+        return str(res.inserted_id)
+    else:
+        conn = get_sqlite_conn()
+        cursor = conn.cursor()
+        try:
+            cursor.execute('''
+                INSERT INTO users (username, password_hash, full_name, role)
+                VALUES (?, ?, ?, ?)
+            ''', (username, password_hash, full_name, role))
+            conn.commit()
+            uid = cursor.lastrowid
+            conn.close()
+            return uid
+        except sqlite3.IntegrityError:
+            conn.close()
+            raise ValueError(f"Username '{username}' already exists.")
+
+def delete_user(user_id):
+    if DB_TYPE == 'mongo' and mongo_db is not None:
+        from bson import ObjectId
+        try:
+            mongo_db.users.delete_one({'_id': ObjectId(user_id)})
+        except Exception:
+            mongo_db.users.delete_one({'username': str(user_id)})
+        return True
+    else:
+        conn = get_sqlite_conn()
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM users WHERE id = ?', (user_id,))
+        conn.commit()
+        conn.close()
+        return True
+
+def get_student_summary(student_id_or_roll):
+    """
+    Returns complete student dossier: info, all historical logs, stats, and disciplinary standing.
+    """
+    student = None
+    if DB_TYPE == 'mongo' and mongo_db is not None:
+        from bson import ObjectId
+        try:
+            student = mongo_db.students.find_one({'_id': ObjectId(student_id_or_roll)})
+        except Exception:
+            pass
+        if not student:
+            student = mongo_db.students.find_one({'roll_no': str(student_id_or_roll).strip().upper()})
+        
+        if not student:
+            return None
+        
+        student['id'] = str(student['_id'])
+        student['_id'] = str(student['_id'])
+        roll = student['roll_no']
+        
+        logs_cursor = mongo_db.food_logs.find({'roll_no': roll}).sort([('log_date', -1), ('_id', -1)])
+        logs = []
+        for l in logs_cursor:
+            l['id'] = str(l['_id'])
+            l['_id'] = str(l['_id'])
+            logs.append(l)
+    else:
+        conn = get_sqlite_conn()
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM students WHERE id = ? OR roll_no = ?', (student_id_or_roll, str(student_id_or_roll).strip().upper()))
+        row = cursor.fetchone()
+        if not row:
+            conn.close()
+            return None
+        student = dict(row)
+        
+        cursor.execute('''
+            SELECT l.*, s.roll_no, s.name as student_name, s.batch
+            FROM food_logs l
+            JOIN students s ON l.student_id = s.id
+            WHERE s.id = ?
+            ORDER BY l.log_date DESC, l.id DESC
+        ''', (student['id'],))
+        logs = [dict(r) for r in cursor.fetchall()]
+        conn.close()
+
+    total_violations = len(logs)
+    hand_count = sum(1 for l in logs if l.get('violation_type') in ('eat_in_hand', 'both'))
+    waste_count = sum(1 for l in logs if l.get('violation_type') in ('waste_food', 'both'))
+    both_count = sum(1 for l in logs if l.get('violation_type') == 'both')
+
+    # Calculate disciplinary standing
+    if total_violations == 0:
+        standing = 'Exemplary'
+        standing_level = 'clean'
+        standing_desc = 'No recorded mess infractions. Excellent dining discipline.'
+    elif total_violations == 1:
+        standing = 'First Notice'
+        standing_level = 'notice'
+        standing_desc = 'Single observation logged. Friendly reminder issued.'
+    elif total_violations <= 3:
+        standing = 'Repeat Warning'
+        standing_level = 'warning'
+        standing_desc = 'Multiple infractions recorded. Committee observation required.'
+    else:
+        standing = 'Disciplinary Action'
+        standing_level = 'critical'
+        standing_desc = 'Frequent offender. Mess committee / Warden counseling required.'
+
+    return {
+        'student': student,
+        'logs': logs,
+        'stats': {
+            'total_violations': total_violations,
+            'hand_count': hand_count,
+            'waste_count': waste_count,
+            'both_count': both_count,
+            'last_violation_date': logs[0]['log_date'] if logs else None
+        },
+        'standing': {
+            'title': standing,
+            'level': standing_level,
+            'description': standing_desc
+        }
+    }
