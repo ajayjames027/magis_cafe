@@ -1,0 +1,142 @@
+/* Custom CSS for Magis Cafe Food Monitoring System */
+
+:root {
+  --primary: #1e3a8a;
+  --secondary: #d97706;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Navigation Tabs */
+.nav-tab {
+  color: #c7d2fe;
+}
+.nav-tab:hover {
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+.nav-tab.active-tab {
+  color: #1e1b4b;
+  background-color: #fbbf24;
+  font-weight: 700;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.mobile-tab.active-tab {
+  color: #fbbf24;
+  font-weight: 700;
+}
+
+/* Meal Pills */
+.meal-pill {
+  background-color: #f8fafc;
+  color: #475569;
+  border-color: #e2e8f0;
+}
+.meal-pill:hover {
+  background-color: #f1f5f9;
+}
+.meal-pill.active-meal {
+  background-color: #1e1b4b;
+  color: #fbbf24;
+  border-color: #1e1b4b;
+  box-shadow: 0 2px 4px rgba(30, 27, 75, 0.15);
+}
+
+/* Batch Filter Buttons */
+.batch-filter-btn {
+  color: #64748b;
+}
+.batch-filter-btn.active-batch,
+.dir-batch-btn.active-batch {
+  background-color: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* Modal Violation Type Buttons */
+.modal-vtype-btn.active {
+  background-color: #1e1b4b;
+  color: #ffffff;
+  border-color: #1e1b4b;
+}
+.modal-sev-btn.active {
+  background-color: #1e3a8a;
+  color: #ffffff;
+  border-color: #1e3a8a;
+}
+
+/* Fast Action Buttons in Student Card */
+.btn-hand {
+  background-color: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+.btn-hand:hover {
+  background-color: #fde68a;
+  color: #78350f;
+}
+
+.btn-waste {
+  background-color: #ffe4e6;
+  color: #9f1239;
+  border: 1px solid #fecdd3;
+}
+.btn-waste:hover {
+  background-color: #fecdd3;
+  color: #881337;
+}
+
+.btn-both {
+  background-color: #f3e8ff;
+  color: #6b21a8;
+  border: 1px solid #e9d5ff;
+}
+.btn-both:hover {
+  background-color: #e9d5ff;
+  color: #581c87;
+}
+
+/* Student Row Card Hover */
+.student-card {
+  transition: all 0.15s ease-in-out;
+}
+.student-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* Toast Animation */
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.toast-item {
+  animation: slideInUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

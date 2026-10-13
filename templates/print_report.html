@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Food Committee Monitoring Report - Magis Cafe</title>
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 15mm;
+    }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #1e293b;
+      margin: 0;
+      padding: 20px;
+      font-size: 11pt;
+      line-height: 1.4;
+    }
+    .header-box {
+      border-bottom: 2px solid #1e3a8a;
+      padding-bottom: 12px;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+    .institute-title {
+      font-size: 18pt;
+      font-weight: 800;
+      color: #1e3a8a;
+      margin: 0;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .cafe-title {
+      font-size: 13pt;
+      font-weight: 700;
+      color: #d97706;
+      margin: 2px 0;
+    }
+    .report-subtitle {
+      font-size: 10pt;
+      color: #64748b;
+      margin: 0;
+    }
+    .meta-box {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-around;
+      text-align: center;
+    }
+    .meta-item {
+      flex: 1;
+    }
+    .meta-label {
+      font-size: 8pt;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: #64748b;
+      display: block;
+      margin-bottom: 3px;
+    }
+    .meta-value {
+      font-size: 14pt;
+      font-weight: 800;
+      color: #0f172a;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 9.5pt;
+    }
+    th {
+      background-color: #1e3a8a;
+      color: #ffffff;
+      font-weight: 700;
+      padding: 8px 6px;
+      text-align: left;
+      border: 1px solid #1e3a8a;
+      font-size: 8.5pt;
+      text-transform: uppercase;
+    }
+    td {
+      padding: 7px 6px;
+      border: 1px solid #cbd5e1;
+    }
+    tr:nth-child(even) {
+      background-color: #f8fafc;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 8pt;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .badge-hand {
+      background: #fef3c7;
+      color: #92400e;
+      border: 1px solid #fde68a;
+    }
+    .badge-waste {
+      background: #ffe4e6;
+      color: #9f1239;
+      border: 1px solid #fecdd3;
+    }
+    .badge-both {
+      background: #f3e8ff;
+      color: #6b21a8;
+      border: 1px solid #e9d5ff;
+    }
+    .footer-signatures {
+      margin-top: 50px;
+      display: flex;
+      justify-content: space-between;
+      page-break-inside: avoid;
+    }
+    .signature-line {
+      width: 200px;
+      border-top: 1px dashed #64748b;
+      padding-top: 6px;
+      text-align: center;
+      font-size: 9pt;
+      font-weight: 600;
+      color: #475569;
+    }
+    .no-print-bar {
+      background: #1e293b;
+      color: white;
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: -20px -20px 20px -20px;
+    }
+    .print-btn {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    @media print {
+      .no-print-bar {
+        display: none !important;
+      }
+      body {
+        padding: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="no-print-bar">
+    <div><strong>Magis Cafe Food Monitoring Report</strong> &bull; {{ date_title }}</div>
+    <div>
+      <button onclick="window.print()" class="print-btn">🖨️ Print / Save as PDF</button>
+      <button onclick="window.close()" style="background:#64748b; color:white; border:none; padding:8px 12px; border-radius:6px; cursor:pointer; margin-left:8px;">Close</button>
+    </div>
+  </div>
+
+  <div class="header-box">
+    <div>
+      <h1 class="institute-title">JIM - St. Joseph's Institute of Management</h1>
+      <div class="cafe-title">MAGIS CAFE &bull; FOOD COMMITTEE RECORD</div>
+      <p class="report-subtitle">Official Discipline & Food Waste Monitoring Log</p>
+    </div>
+    <div style="text-align: right; font-size: 9pt; color: #64748b;">
+      <div><strong>Date Range:</strong> {{ date_title }}</div>
+      <div><strong>Meal Session:</strong> {{ meal }}</div>
+      <div><strong>Batch:</strong> {{ batch }}</div>
+      <div><strong>Generated:</strong> {{ generated_at }}</div>
+    </div>
+  </div>
+
+  <!-- Metric Summary -->
+  <div class="meta-box">
+    <div class="meta-item">
+      <span class="meta-label">Total Observations</span>
+      <span class="meta-value">{{ total_logs }}</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Eat in Hand</span>
+      <span class="meta-value" style="color: #d97706;">{{ hand_count }}</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Wasted Food</span>
+      <span class="meta-value" style="color: #e11d48;">{{ waste_count }}</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Unique Students</span>
+      <span class="meta-value" style="color: #4f46e5;">{{ unique_students }}</span>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 5%; text-align: center;">S.No</th>
+        <th style="width: 12%;">Date</th>
+        <th style="width: 12%;">Meal</th>
+        <th style="width: 14%;">Roll No</th>
+        <th style="width: 25%;">Student Name</th>
+        <th style="width: 9%; text-align: center;">Batch</th>
+        <th style="width: 15%;">Violation</th>
+        <th>Remarks</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for log in logs %}
+      <tr>
+        <td style="text-align: center;">{{ loop.index }}</td>
+        <td>{{ log.log_date }}</td>
+        <td><strong>{{ log.meal_session }}</strong></td>
+        <td style="font-family: monospace; font-weight: bold;">{{ log.roll_no }}</td>
+        <td><strong>{{ log.student_name }}</strong></td>
+        <td style="text-align: center;">{{ log.batch }}</td>
+        <td>
+          {% if log.violation_type == 'eat_in_hand' %}
+            <span class="badge badge-hand">Eat in Hand</span>
+          {% elif log.violation_type == 'waste_food' %}
+            <span class="badge badge-waste">Food Waste ({{ log.waste_severity or 'Normal' }})</span>
+          {% else %}
+            <span class="badge badge-both">Hand & Waste</span>
+          {% endif %}
+        </td>
+        <td>{{ log.remarks or '-' }}</td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="8" style="text-align: center; padding: 25px; color: #94a3b8;">
+          No violations recorded for the selected criteria.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- Official Signatures -->
+  <div class="footer-signatures">
+    <div class="signature-line">
+      Food Committee Representative
+    </div>
+    <div class="signature-line">
+      Mess Warden / Manager
+    </div>
+    <div class="signature-line">
+      Dean / Director
+    </div>
+  </div>
+
+</body>
+</html>
