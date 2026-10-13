@@ -73,6 +73,13 @@ def index():
         return redirect(url_for('login_page'))
     return render_template('index.html')
 
+@app.route('/api/index')
+@app.route('/api/index.py')
+def vercel_entry_fallback():
+    if not session.get('user_id'):
+        return redirect(url_for('login_page'))
+    return redirect(url_for('index'))
+
 @app.route('/report/print')
 def print_report():
     if not session.get('user_id'):

@@ -36,7 +36,8 @@ def _load_mongo_uri():
                         return line.split('=', 1)[1].strip().strip('"').strip("'")
         except Exception:
             pass
-    return ''
+    # Default cloud connection for Vercel deployment:
+    return "mongodb+srv://ajayjames027_db_user:Ue4r3MCPWOqA9Z79@cluster0.mxx8sum.mongodb.net/magis_cafe?retryWrites=true&w=majority"
 
 MONGO_URI = _load_mongo_uri()
 DB_TYPE = 'mongo' if MONGO_URI else 'sqlite'
