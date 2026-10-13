@@ -3,21 +3,24 @@
 <head>
   <meta charset="UTF-8">
   <title>Food Committee Monitoring Report - Magis Cafe</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     @page {
       size: A4 portrait;
       margin: 15mm;
     }
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-family: 'Inter', -apple-system, sans-serif;
       color: #1e293b;
       margin: 0;
       padding: 20px;
-      font-size: 11pt;
+      font-size: 10.5pt;
       line-height: 1.4;
     }
     .header-box {
-      border-bottom: 2px solid #1e3a8a;
+      border-bottom: 2.5px solid #0284c7;
       padding-bottom: 12px;
       margin-bottom: 20px;
       display: flex;
@@ -25,21 +28,22 @@
       align-items: flex-end;
     }
     .institute-title {
-      font-size: 18pt;
+      font-family: 'Cinzel', Georgia, serif;
+      font-size: 16pt;
       font-weight: 800;
-      color: #1e3a8a;
+      color: #0c2344;
       margin: 0;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.8px;
     }
     .cafe-title {
-      font-size: 13pt;
+      font-size: 12pt;
       font-weight: 700;
-      color: #d97706;
+      color: #0284c7;
       margin: 2px 0;
     }
     .report-subtitle {
-      font-size: 10pt;
+      font-size: 9.5pt;
       color: #64748b;
       margin: 0;
     }
@@ -76,12 +80,12 @@
       font-size: 9.5pt;
     }
     th {
-      background-color: #1e3a8a;
+      background-color: #0c2344;
       color: #ffffff;
       font-weight: 700;
       padding: 8px 6px;
       text-align: left;
-      border: 1px solid #1e3a8a;
+      border: 1px solid #0c2344;
       font-size: 8.5pt;
       text-transform: uppercase;
     }
@@ -131,7 +135,7 @@
       color: #475569;
     }
     .no-print-bar {
-      background: #1e293b;
+      background: #091a32;
       color: white;
       padding: 10px 20px;
       display: flex;
@@ -140,7 +144,7 @@
       margin: -20px -20px 20px -20px;
     }
     .print-btn {
-      background: #3b82f6;
+      background: #0284c7;
       color: white;
       border: none;
       padding: 8px 16px;
@@ -198,7 +202,7 @@
     </div>
     <div class="meta-item">
       <span class="meta-label">Unique Students</span>
-      <span class="meta-value" style="color: #4f46e5;">{{ unique_students }}</span>
+      <span class="meta-value" style="color: #0284c7;">{{ unique_students }}</span>
     </div>
   </div>
 

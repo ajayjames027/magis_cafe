@@ -347,20 +347,20 @@ function renderStudentsList() {
         <!-- Left: Student Info & Checkbox -->
         <div class="flex items-center gap-3 flex-1 min-w-0">
           ${appState.bulkMode ? `
-            <input type="checkbox" onchange="toggleSelectStudent('${st.id}', this.checked)" ${isSelected ? 'checked' : ''} class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer">
+            <input type="checkbox" onchange="toggleSelectStudent('${st.id}', this.checked)" ${isSelected ? 'checked' : ''} class="w-4 h-4 rounded text-sky-600 focus:ring-sky-500 cursor-pointer">
           ` : ''}
 
-          <div onclick="openStudentSummary('${st.roll_no}')" title="Click to view summary dossier" class="cursor-pointer w-10 h-10 rounded-xl ${st.gender === 'F' ? 'bg-pink-100 text-pink-700' : 'bg-blue-100 text-blue-700'} font-black text-xs flex items-center justify-center flex-shrink-0 hover:scale-105 transition">
+          <div onclick="openStudentSummary('${st.roll_no}')" title="Click to view summary dossier" class="cursor-pointer w-10 h-10 rounded-xl ${st.gender === 'F' ? 'bg-sky-100 text-sky-800 border border-sky-200' : 'bg-sky-50 text-sky-900 border border-sky-200'} font-black text-xs flex items-center justify-center flex-shrink-0 hover:scale-105 transition shadow-sm">
             ${st.roll_no.slice(-3)}
           </div>
 
           <div class="min-w-0 flex-1">
-            <div class="flex items-center gap-2 flex-wrap">
-              <span onclick="openStudentSummary('${st.roll_no}')" class="cursor-pointer font-mono font-bold text-slate-900 text-xs px-1.5 py-0.5 bg-slate-100 hover:bg-indigo-100 hover:text-indigo-800 rounded transition">${st.roll_no}</span>
-              <span class="text-xs font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.2 rounded">${st.batch}</span>
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <span onclick="openStudentSummary('${st.roll_no}')" class="cursor-pointer font-mono font-bold text-sky-950 text-xs px-2 py-0.5 bg-sky-50 border border-sky-200 hover:bg-sky-100 rounded-lg transition">${st.roll_no}</span>
+              <span class="text-xs font-bold text-sky-800 bg-sky-100/70 border border-sky-200/60 px-1.5 py-0.2 rounded-lg">${st.batch}</span>
               ${badgeHtml}
             </div>
-            <h4 onclick="openStudentSummary('${st.roll_no}')" class="cursor-pointer text-xs sm:text-sm font-bold text-slate-800 hover:text-indigo-600 truncate mt-0.5 transition">${st.name}</h4>
+            <h4 onclick="openStudentSummary('${st.roll_no}')" class="cursor-pointer text-xs sm:text-sm font-bold text-slate-900 hover:text-sky-700 truncate mt-0.5 transition">${st.name}</h4>
           </div>
         </div>
 
@@ -368,29 +368,30 @@ function renderStudentsList() {
         <div class="flex items-center gap-1.5 flex-shrink-0 self-end sm:self-center">
           <button type="button" onclick="logStudentFast('${st.id}', 'eat_in_hand', '${escapeHtml(st.name)}', '${st.roll_no}')" 
             title="Mark Eat in Hand" 
-            class="btn-hand px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1">
+            class="btn-hand px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-sm">
             <span>🖐️</span>
             <span class="hidden sm:inline">Hand</span>
           </button>
           
           <button type="button" onclick="logStudentFast('${st.id}', 'waste_food', '${escapeHtml(st.name)}', '${st.roll_no}')" 
             title="Mark Wasted Food" 
-            class="btn-waste px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1">
+            class="btn-waste px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-sm">
             <span>🗑️</span>
             <span class="hidden sm:inline">Waste</span>
           </button>
           
           <button type="button" onclick="logStudentFast('${st.id}', 'both', '${escapeHtml(st.name)}', '${st.roll_no}')" 
             title="Mark Both (Hand + Waste)" 
-            class="btn-both px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1">
+            class="btn-both px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-sm">
             <span>⚠️</span>
             <span class="hidden sm:inline">Both</span>
           </button>
 
           <button type="button" onclick="openStudentSummary('${st.roll_no}')" 
-            title="Student Dossier & History" 
-            class="p-1.5 text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 rounded-lg transition">
-            <i data-lucide="file-text" class="w-4 h-4"></i>
+            title="Student Mess Dossier & Historical Summary" 
+            class="btn-dossier px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-sm">
+            <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
+            <span class="hidden md:inline">Dossier</span>
           </button>
 
           <button type="button" onclick="openQuickNoteModal('${st.id}', '${escapeHtml(st.name)}', '${st.roll_no}')" 
@@ -552,7 +553,7 @@ async function openStudentSummary(studentIdOrRoll) {
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-2">
                 <span class="font-bold text-slate-800">${l.log_date}</span>
-                <span class="font-bold text-indigo-700 text-[11px]">${l.meal_session}</span>
+                <span class="font-bold text-sky-700 text-[11px]">${l.meal_session}</span>
                 ${vBadge}
               </div>
               <div class="text-[11px] text-slate-500 mt-0.5">
@@ -614,7 +615,7 @@ async function loadUsersList() {
 
     const roleBadges = {
       'admin': '<span class="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-full">🎓 Admin</span>',
-      'food_committee': '<span class="bg-indigo-100 text-indigo-900 border border-indigo-300 text-[10px] font-bold px-2 py-0.5 rounded-full">🍽️ Food Committee</span>',
+      'food_committee': '<span class="bg-sky-100 text-sky-900 border border-sky-300 text-[10px] font-bold px-2 py-0.5 rounded-full">🍽️ Food Committee</span>',
       'staff': '<span class="bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded-full">📋 Staff</span>'
     };
 
@@ -825,11 +826,11 @@ function renderRecentActivityFeed() {
       <div class="bg-slate-50 border border-slate-200 rounded-xl p-2.5 flex items-center justify-between text-xs hover:bg-slate-100 transition">
         <div class="min-w-0 flex-1 pr-2">
           <div class="flex items-center gap-1.5">
-            <span onclick="openStudentSummary('${l.roll_no}')" class="cursor-pointer font-mono font-bold text-slate-900 hover:text-indigo-600 transition">${l.roll_no}</span>
+            <span onclick="openStudentSummary('${l.roll_no}')" class="cursor-pointer font-mono font-bold text-slate-900 hover:text-sky-700 transition">${l.roll_no}</span>
             ${vBadge}
             ${l.remarks ? `<span class="text-[10px] text-slate-400 italic truncate max-w-[120px]">"${l.remarks}"</span>` : ''}
           </div>
-          <div onclick="openStudentSummary('${l.roll_no}')" class="cursor-pointer text-slate-600 font-medium truncate text-[11px] mt-0.5 hover:text-indigo-600 transition">${l.student_name}</div>
+          <div onclick="openStudentSummary('${l.roll_no}')" class="cursor-pointer text-slate-600 font-medium truncate text-[11px] mt-0.5 hover:text-sky-700 transition">${l.student_name}</div>
         </div>
         <div class="flex items-center gap-1">
           <span class="text-[10px] font-mono text-slate-400 mr-1">${timeStr}</span>
@@ -1034,9 +1035,9 @@ function renderRecords() {
       <tr class="hover:bg-slate-50 transition">
         <td class="px-4 py-2.5 font-mono text-slate-400">${idx + 1}</td>
         <td class="px-4 py-2.5 font-medium text-slate-700 whitespace-nowrap">${l.log_date}</td>
-        <td class="px-4 py-2.5 font-bold text-indigo-700">${l.meal_session}</td>
-        <td onclick="openStudentSummary('${l.roll_no}')" class="cursor-pointer px-4 py-2.5 font-mono font-bold text-slate-900 hover:text-indigo-600 transition">${l.roll_no}</td>
-        <td onclick="openStudentSummary('${l.roll_no}')" class="cursor-pointer px-4 py-2.5 font-bold text-slate-800 hover:text-indigo-600 transition">${l.student_name}</td>
+        <td class="px-4 py-2.5 font-bold text-sky-700">${l.meal_session}</td>
+        <td onclick="openStudentSummary('${l.roll_no}')" class="cursor-pointer px-4 py-2.5 font-mono font-bold text-slate-900 hover:text-sky-700 transition">${l.roll_no}</td>
+        <td onclick="openStudentSummary('${l.roll_no}')" class="cursor-pointer px-4 py-2.5 font-bold text-slate-800 hover:text-sky-700 transition">${l.student_name}</td>
         <td class="px-4 py-2.5 font-medium text-slate-600">${l.batch}</td>
         <td class="px-4 py-2.5">${vBadge}</td>
         <td class="px-4 py-2.5 text-slate-600">
@@ -1172,15 +1173,15 @@ function renderLeaderboard(board) {
     html += `
       <tr class="hover:bg-slate-50 transition">
         <td class="px-4 py-2.5">${rankBadge}</td>
-        <td onclick="openStudentSummary('${st.roll_no}')" class="cursor-pointer px-4 py-2.5 font-mono font-bold text-slate-900 hover:text-indigo-600 transition">${st.roll_no}</td>
-        <td onclick="openStudentSummary('${st.roll_no}')" class="cursor-pointer px-4 py-2.5 font-bold text-slate-800 hover:text-indigo-600 transition">${st.name}</td>
+        <td onclick="openStudentSummary('${st.roll_no}')" class="cursor-pointer px-4 py-2.5 font-mono font-bold text-slate-900 hover:text-sky-700 transition">${st.roll_no}</td>
+        <td onclick="openStudentSummary('${st.roll_no}')" class="cursor-pointer px-4 py-2.5 font-bold text-slate-800 hover:text-sky-700 transition">${st.name}</td>
         <td class="px-4 py-2.5 text-slate-600">${st.batch}</td>
         <td class="px-4 py-2.5 text-center font-bold text-amber-600">${st.hand_violations}</td>
         <td class="px-4 py-2.5 text-center font-bold text-rose-600">${st.waste_violations}</td>
         <td class="px-4 py-2.5 text-center font-extrabold text-slate-900">${st.total_violations}</td>
         <td class="px-4 py-2.5 text-slate-400 font-mono">${st.last_violation_date || '-'}</td>
         <td class="px-4 py-2.5 text-right">
-          <button onclick="openStudentSummary('${st.roll_no}')" class="px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-lg text-xs flex items-center gap-1 ml-auto">
+          <button onclick="openStudentSummary('${st.roll_no}')" class="px-2.5 py-1 bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 font-bold rounded-lg text-xs flex items-center gap-1 ml-auto transition">
             <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
             <span>Dossier</span>
           </button>
@@ -1305,13 +1306,13 @@ async function loadDirectoryStudents() {
       html += `
         <tr class="hover:bg-slate-50 transition">
           <td class="px-4 py-2.5 font-mono text-slate-400">${idx + 1}</td>
-          <td onclick="openStudentSummary('${st.roll_no}')" class="cursor-pointer px-4 py-2.5 font-mono font-bold text-slate-900 hover:text-indigo-600 transition">${st.roll_no}</td>
-          <td onclick="openStudentSummary('${st.roll_no}')" class="cursor-pointer px-4 py-2.5 font-bold text-slate-800 hover:text-indigo-600 transition">${st.name}</td>
-          <td class="px-4 py-2.5 font-semibold text-indigo-700">${st.batch}</td>
+          <td onclick="openStudentSummary('${st.roll_no}')" class="cursor-pointer px-4 py-2.5 font-mono font-bold text-slate-900 hover:text-sky-700 transition">${st.roll_no}</td>
+          <td onclick="openStudentSummary('${st.roll_no}')" class="cursor-pointer px-4 py-2.5 font-bold text-slate-800 hover:text-sky-700 transition">${st.name}</td>
+          <td class="px-4 py-2.5 font-semibold text-sky-700">${st.batch}</td>
           <td class="px-4 py-2.5">${st.gender || '-'}</td>
           <td class="px-4 py-2.5 font-mono text-slate-500">${st.mobile || '-'}</td>
           <td class="px-4 py-2.5 text-right whitespace-nowrap">
-            <button onclick="openStudentSummary('${st.roll_no}')" class="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-xl text-xs inline-flex items-center gap-1 transition">
+            <button onclick="openStudentSummary('${st.roll_no}')" class="px-2.5 py-1 bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 font-bold rounded-xl text-xs inline-flex items-center gap-1 transition">
               <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
               <span>View Dossier</span>
             </button>
@@ -1550,7 +1551,7 @@ function showToast(message, type = 'info', onUndo = null) {
     typeClasses = 'bg-rose-950 text-rose-100 border-rose-800';
     iconHtml = '❌';
   } else if (type === 'info') {
-    typeClasses = 'bg-indigo-950 text-indigo-100 border-indigo-800';
+    typeClasses = 'bg-sky-950 text-sky-100 border-sky-800';
     iconHtml = '📢';
   }
 

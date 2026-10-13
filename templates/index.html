@@ -14,51 +14,56 @@
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <link rel="stylesheet" href="/static/css/style.css">
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Cinzel:wght@600;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
     body {
-      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-family: 'Inter', sans-serif;
+      background-color: #f4f8fc;
     }
     .academic-serif {
       font-family: 'Cinzel', Georgia, serif;
+      letter-spacing: 0.04em;
+    }
+    .font-mono-code {
+      font-family: 'JetBrains Mono', monospace;
     }
   </style>
 </head>
-<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
+<body class="bg-[#f4f8fc] text-slate-800 antialiased min-h-screen flex flex-col selection:bg-sky-500 selection:text-white">
 
   <!-- TOP INSTITUTIONAL HEADER -->
-  <header class="bg-indigo-950 text-white shadow-xl sticky top-0 z-40 border-b border-indigo-900/60">
+  <header class="academic-header text-white shadow-xl sticky top-0 z-40">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex items-center justify-between h-16">
         
         <!-- College Logo & Branding -->
         <div class="flex items-center space-x-3">
-          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center font-black text-indigo-950 text-lg shadow-md border border-amber-300">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-400 via-sky-500 to-sky-700 flex items-center justify-center font-black text-white text-base shadow-md border border-sky-300 ring-2 ring-sky-400/25 academic-serif">
             JIM
           </div>
           <div>
             <div class="flex items-center space-x-2">
-              <span class="font-extrabold text-base sm:text-lg tracking-tight text-white">MAGIS CAFE</span>
-              <span class="bg-amber-400/90 text-indigo-950 text-[10px] px-2 py-0.5 rounded-full font-black uppercase tracking-wider">Mess Portal</span>
+              <span class="font-extrabold text-base sm:text-lg tracking-tight text-white academic-serif">MAGIS CAFE</span>
+              <span class="bg-sky-400/20 border border-sky-300/30 text-sky-200 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">Mess Portal</span>
             </div>
-            <p class="text-[11px] text-indigo-200/80 font-medium">St. Joseph's Institute of Management</p>
+            <p class="text-[11px] text-sky-200/80 font-medium">St. Joseph's Institute of Management</p>
           </div>
         </div>
 
         <!-- Meal Session Status Badge -->
-        <div class="hidden lg:flex items-center space-x-3 bg-indigo-900/60 border border-indigo-800/60 px-3.5 py-1.5 rounded-xl">
+        <div class="hidden lg:flex items-center space-x-3 bg-sky-950/60 border border-sky-800/60 px-3.5 py-1.5 rounded-xl">
           <div class="flex items-center space-x-2 text-xs">
             <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span class="text-indigo-200">Active Meal:</span>
+            <span class="text-sky-200 font-medium">Active Meal:</span>
             <span id="headerCurrentMealBadge" class="font-bold text-amber-300">Detecting...</span>
           </div>
-          <span class="text-indigo-700">|</span>
-          <span id="headerClock" class="text-xs font-mono text-indigo-200">--:--</span>
+          <span class="text-sky-700">|</span>
+          <span id="headerClock" class="text-xs font-mono text-sky-200">--:--</span>
         </div>
 
         <!-- Navigation Tabs -->
         <nav class="hidden md:flex space-x-1" id="desktopNavTabs">
           <button onclick="switchTab('logger')" id="tabBtn-logger" class="nav-tab active-tab px-3 py-1.5 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition">
-            <i data-lucide="zap" class="w-4 h-4 text-amber-400"></i>
+            <i data-lucide="zap" class="w-4 h-4 text-amber-300"></i>
             <span>Quick Logger</span>
           </button>
           <button onclick="switchTab('records')" id="tabBtn-records" class="nav-tab px-3 py-1.5 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition">
@@ -79,27 +84,27 @@
         <div class="flex items-center space-x-2.5">
           
           <!-- Admin Manage Users Button (Only visible for admin) -->
-          <button id="adminManageUsersBtn" onclick="openUserManagementModal()" class="hidden bg-indigo-900/80 hover:bg-indigo-800 text-amber-300 border border-indigo-700/60 px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition">
-            <i data-lucide="user-cog" class="w-4 h-4 text-amber-400"></i>
+          <button id="adminManageUsersBtn" onclick="openUserManagementModal()" class="hidden bg-sky-900/60 hover:bg-sky-800/80 text-sky-200 border border-sky-700/60 px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition">
+            <i data-lucide="user-cog" class="w-4 h-4 text-sky-300"></i>
             <span class="hidden sm:inline">Manage Logins</span>
           </button>
 
           <!-- Mobile Scan Button -->
-          <button onclick="openMobileModal()" title="Open on Phone" class="bg-indigo-900/60 hover:bg-indigo-800 text-indigo-100 px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 border border-indigo-800 transition">
-            <i data-lucide="smartphone" class="w-4 h-4 text-amber-400"></i>
+          <button onclick="openMobileModal()" title="Open on Phone" class="bg-sky-900/40 hover:bg-sky-800/60 text-sky-100 px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 border border-sky-700/50 transition">
+            <i data-lucide="smartphone" class="w-4 h-4 text-sky-300"></i>
             <span class="hidden xl:inline">Phone QR</span>
           </button>
 
           <!-- Current User Profile Pill -->
-          <div class="flex items-center gap-2 bg-indigo-900/80 border border-indigo-700/60 px-3 py-1.5 rounded-xl text-xs">
-            <div id="userRoleIconContainer" class="w-6 h-6 rounded-lg bg-amber-400 text-indigo-950 font-black flex items-center justify-center text-xs">
+          <div class="flex items-center gap-2 bg-sky-900/60 border border-sky-700/60 px-3 py-1.5 rounded-xl text-xs">
+            <div id="userRoleIconContainer" class="w-6 h-6 rounded-lg bg-gradient-to-br from-sky-500 to-sky-600 text-white font-black flex items-center justify-center text-xs shadow-sm">
               U
             </div>
             <div class="hidden sm:block text-left">
               <div id="navUserFullName" class="font-bold text-white text-[11px] leading-tight truncate max-w-[120px]">User</div>
-              <div id="navUserRoleBadge" class="text-[10px] text-amber-300 uppercase tracking-wider font-extrabold">Role</div>
+              <div id="navUserRoleBadge" class="text-[10px] text-sky-300 uppercase tracking-wider font-extrabold">Role</div>
             </div>
-            <a href="/logout" title="Sign Out" class="ml-1 text-indigo-300 hover:text-rose-400 p-1 transition">
+            <a href="/logout" title="Sign Out" class="ml-1 text-sky-300 hover:text-rose-400 p-1 transition">
               <i data-lucide="log-out" class="w-4 h-4"></i>
             </a>
           </div>
@@ -110,20 +115,20 @@
     </div>
 
     <!-- Mobile Bottom Navigation -->
-    <div class="md:hidden flex justify-around border-t border-indigo-900 bg-indigo-950 px-2 py-1.5">
-      <button onclick="switchTab('logger')" id="mTabBtn-logger" class="mobile-tab text-amber-400 flex flex-col items-center text-[10px] font-bold py-1 px-2">
+    <div class="md:hidden flex justify-around border-t border-sky-900/70 bg-[#07172c] px-2 py-1.5">
+      <button onclick="switchTab('logger')" id="mTabBtn-logger" class="mobile-tab text-sky-400 flex flex-col items-center text-[10px] font-bold py-1 px-2">
         <i data-lucide="zap" class="w-4 h-4 mb-0.5"></i>
         <span>Log</span>
       </button>
-      <button onclick="switchTab('records')" id="mTabBtn-records" class="mobile-tab text-indigo-300 flex flex-col items-center text-[10px] font-bold py-1 px-2">
+      <button onclick="switchTab('records')" id="mTabBtn-records" class="mobile-tab text-sky-200/70 flex flex-col items-center text-[10px] font-bold py-1 px-2">
         <i data-lucide="clipboard-list" class="w-4 h-4 mb-0.5"></i>
         <span>Records</span>
       </button>
-      <button onclick="switchTab('analytics')" id="mTabBtn-analytics" class="mobile-tab text-indigo-300 flex flex-col items-center text-[10px] font-bold py-1 px-2">
+      <button onclick="switchTab('analytics')" id="mTabBtn-analytics" class="mobile-tab text-sky-200/70 flex flex-col items-center text-[10px] font-bold py-1 px-2">
         <i data-lucide="bar-chart-3" class="w-4 h-4 mb-0.5"></i>
         <span>Stats</span>
       </button>
-      <button onclick="switchTab('students')" id="mTabBtn-students" class="mobile-tab text-indigo-300 flex flex-col items-center text-[10px] font-bold py-1 px-2">
+      <button onclick="switchTab('students')" id="mTabBtn-students" class="mobile-tab text-sky-200/70 flex flex-col items-center text-[10px] font-bold py-1 px-2">
         <i data-lucide="users" class="w-4 h-4 mb-0.5"></i>
         <span>Students</span>
       </button>
@@ -145,7 +150,7 @@
           <!-- Meal Selector Pills -->
           <div class="flex flex-col sm:flex-row sm:items-center gap-2">
             <span class="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-              <i data-lucide="utensils" class="w-3.5 h-3.5 text-indigo-600"></i> Meal Session:
+              <i data-lucide="utensils" class="w-3.5 h-3.5 text-sky-600"></i> Meal Session:
             </span>
             <div class="grid grid-cols-2 sm:flex sm:flex-wrap gap-1.5" id="mealSelectorGroup">
               <button type="button" onclick="selectMealSession('Breakfast')" class="meal-pill px-3 py-1.5 rounded-xl text-xs font-bold border transition flex items-center justify-center gap-1.5" data-meal="Breakfast">
@@ -166,12 +171,12 @@
           <!-- Date Selector & Shortcuts -->
           <div class="flex items-center gap-2">
             <span class="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-              <i data-lucide="calendar" class="w-3.5 h-3.5 text-indigo-600"></i> Date:
+              <i data-lucide="calendar" class="w-3.5 h-3.5 text-sky-600"></i> Date:
             </span>
             <div class="flex items-center gap-1.5">
-              <button onclick="setLogDate('today')" id="quickDateToday" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition">Today</button>
+              <button onclick="setLogDate('today')" id="quickDateToday" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-sky-50 text-sky-800 hover:bg-sky-100 border border-sky-200/60 transition">Today</button>
               <button onclick="setLogDate('yesterday')" id="quickDateYesterday" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition">Yesterday</button>
-              <input type="date" id="selectedLogDate" onchange="onDateChanged()" class="border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50">
+              <input type="date" id="selectedLogDate" onchange="onDateChanged()" class="border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500 bg-slate-50">
             </div>
           </div>
 
@@ -192,7 +197,7 @@
               <div class="relative flex-1">
                 <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5"></i>
                 <input type="text" id="studentSearchInput" oninput="filterStudents()" placeholder="Search by Roll No (e.g. 101, 255) or Student Name... (Press '/' to focus)" 
-                  class="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                  class="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 transition">
                 <button id="clearSearchBtn" onclick="clearSearch()" class="hidden absolute right-3 top-3 text-slate-400 hover:text-slate-600">
                   <i data-lucide="x" class="w-4 h-4"></i>
                 </button>
@@ -212,11 +217,11 @@
             <!-- Bulk Mode Banner / Toolbar -->
             <div class="mt-3 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs">
               <div class="flex items-center gap-3">
-                <label class="flex items-center gap-1.5 cursor-pointer font-bold text-slate-600 hover:text-indigo-600 select-none">
-                  <input type="checkbox" id="bulkSelectModeToggle" onchange="toggleBulkMode()" class="rounded text-indigo-600 focus:ring-indigo-500">
+                <label class="flex items-center gap-1.5 cursor-pointer font-bold text-slate-600 hover:text-sky-600 select-none">
+                  <input type="checkbox" id="bulkSelectModeToggle" onchange="toggleBulkMode()" class="rounded text-sky-600 focus:ring-sky-500">
                   <span>Multi-Select Mode</span>
                 </label>
-                <span id="selectedCountBadge" class="hidden bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-bold text-[11px]">0 selected</span>
+                <span id="selectedCountBadge" class="hidden bg-sky-100 text-sky-800 px-2 py-0.5 rounded-full font-bold text-[11px]">0 selected</span>
               </div>
 
               <!-- Bulk Action Buttons -->
@@ -243,7 +248,7 @@
           <!-- Students List / Grid -->
           <div id="studentsGrid" class="space-y-2 max-h-[620px] overflow-y-auto pr-1">
             <div class="text-center py-12 text-slate-400">
-              <i data-lucide="loader" class="w-8 h-8 mx-auto animate-spin mb-2 text-indigo-400"></i>
+              <i data-lucide="loader" class="w-8 h-8 mx-auto animate-spin mb-2 text-sky-500"></i>
               <p class="text-sm">Loading student directory from database...</p>
             </div>
           </div>
@@ -254,29 +259,29 @@
         <div class="lg:col-span-4 flex flex-col space-y-4">
           
           <!-- Mini Summary Card for Selected Session -->
-          <div class="bg-gradient-to-br from-indigo-950 via-indigo-900 to-indigo-950 text-white rounded-2xl p-4 shadow-md border border-indigo-800">
+          <div class="bg-gradient-to-br from-[#091a32] via-[#0c2344] to-[#0e2a52] text-white rounded-2xl p-4 shadow-md border border-sky-900/60">
             <div class="flex items-center justify-between mb-3">
               <div>
-                <span class="text-xs uppercase tracking-wider text-indigo-300 font-extrabold">Session Overview</span>
-                <h3 class="text-lg font-black text-white" id="panelSessionTitle">Lunch - Today</h3>
+                <span class="text-[10px] uppercase tracking-wider text-sky-300 font-extrabold academic-serif">Session Overview</span>
+                <h3 class="text-base sm:text-lg font-black text-white" id="panelSessionTitle">Lunch - Today</h3>
               </div>
-              <span class="p-2 rounded-xl bg-indigo-800/80 text-amber-400 border border-indigo-700/50">
+              <span class="p-2 rounded-xl bg-sky-900/60 text-sky-300 border border-sky-800/40">
                 <i data-lucide="shield-alert" class="w-5 h-5"></i>
               </span>
             </div>
 
-            <div class="grid grid-cols-3 gap-2 text-center pt-2 border-t border-indigo-800/70">
-              <div class="bg-indigo-950/60 p-2.5 rounded-xl border border-indigo-800/40">
-                <span class="text-xs text-indigo-300 block mb-0.5 font-bold">Total</span>
-                <span id="quickStatsTotal" class="text-xl font-black text-white">0</span>
+            <div class="grid grid-cols-3 gap-2 text-center pt-2 border-t border-sky-900/60">
+              <div class="bg-sky-950/60 p-2.5 rounded-xl border border-sky-800/40">
+                <span class="text-xs text-sky-300 block mb-0.5 font-bold">Total</span>
+                <span id="quickStatsTotal" class="text-xl font-black text-white font-mono">0</span>
               </div>
-              <div class="bg-amber-950/40 p-2.5 rounded-xl border border-amber-800/40">
+              <div class="bg-amber-950/30 p-2.5 rounded-xl border border-amber-800/30">
                 <span class="text-[11px] text-amber-300 block mb-0.5 font-bold">🖐️ Hand</span>
-                <span id="quickStatsHand" class="text-xl font-black text-amber-400">0</span>
+                <span id="quickStatsHand" class="text-xl font-black text-amber-400 font-mono">0</span>
               </div>
-              <div class="bg-rose-950/40 p-2.5 rounded-xl border border-rose-800/40">
+              <div class="bg-rose-950/30 p-2.5 rounded-xl border border-rose-800/30">
                 <span class="text-[11px] text-rose-300 block mb-0.5 font-bold">🗑️ Waste</span>
-                <span id="quickStatsWaste" class="text-xl font-black text-rose-400">0</span>
+                <span id="quickStatsWaste" class="text-xl font-black text-rose-400 font-mono">0</span>
               </div>
             </div>
           </div>
@@ -300,15 +305,13 @@
 
             <div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
               <span>Made a mistake?</span>
-              <span class="text-indigo-600 font-semibold cursor-pointer hover:underline" onclick="switchTab('records')">View full records &rarr;</span>
+              <span class="text-sky-600 font-semibold cursor-pointer hover:underline" onclick="switchTab('records')">View full records &rarr;</span>
             </div>
           </div>
 
         </div>
 
       </div>
-
-    </section>
 
     <!-- ======================================================== -->
     <!-- TAB 2: DATE-WISE RECORDS & REPORTS -->
@@ -320,7 +323,7 @@
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-100">
           <div>
             <h2 class="text-lg font-black text-slate-900 flex items-center gap-2">
-              <i data-lucide="clipboard-list" class="w-5 h-5 text-indigo-600"></i> Date-Wise Mess Records
+              <i data-lucide="clipboard-list" class="w-5 h-5 text-sky-600"></i> Date-Wise Mess Records
             </h2>
             <p class="text-xs text-slate-500">Official log of dining hall discipline and food waste observations</p>
           </div>
@@ -331,7 +334,7 @@
               <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
               <span>Download Excel</span>
             </button>
-            <button onclick="openPrintReport()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition">
+            <button onclick="openPrintReport()" class="bg-sky-600 hover:bg-sky-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition">
               <i data-lucide="printer" class="w-4 h-4"></i>
               <span>Print Official Report</span>
             </button>
@@ -344,7 +347,7 @@
           <!-- Date Filter Type -->
           <div>
             <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Date Range</label>
-            <select id="recordsDatePreset" onchange="onRecordsDatePresetChanged()" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <select id="recordsDatePreset" onchange="onRecordsDatePresetChanged()" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500">
               <option value="today">Today</option>
               <option value="yesterday">Yesterday</option>
               <option value="last7">Last 7 Days</option>
@@ -369,7 +372,7 @@
           <!-- Meal Filter -->
           <div>
             <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Meal</label>
-            <select id="recordsMealFilter" onchange="loadRecords()" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <select id="recordsMealFilter" onchange="loadRecords()" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500">
               <option value="All">All Meals</option>
               <option value="Breakfast">Breakfast</option>
               <option value="Lunch">Lunch</option>
@@ -381,7 +384,7 @@
           <!-- Violation Type Filter -->
           <div>
             <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Violation</label>
-            <select id="recordsViolationFilter" onchange="loadRecords()" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <select id="recordsViolationFilter" onchange="loadRecords()" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500">
               <option value="All">All Violations</option>
               <option value="eat_in_hand">Eat in Hand</option>
               <option value="waste_food">Wasted Food</option>
@@ -392,7 +395,7 @@
           <!-- Batch Filter -->
           <div>
             <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Batch</label>
-            <select id="recordsBatchFilter" onchange="loadRecords()" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <select id="recordsBatchFilter" onchange="loadRecords()" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500">
               <option value="All">All Batches</option>
               <option value="I MBA">I MBA</option>
               <option value="II MBA">II MBA</option>
@@ -403,7 +406,7 @@
           <div>
             <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Search Student</label>
             <input type="text" id="recordsSearchInput" oninput="loadRecordsDebounced()" placeholder="Roll No or Name..." 
-              class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500">
           </div>
 
         </div>
@@ -412,7 +415,7 @@
         <div class="mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs">
           <div class="flex items-center gap-3">
             <span class="font-bold text-slate-700">Summary:</span>
-            <span class="bg-indigo-100 text-indigo-800 font-extrabold px-2.5 py-0.5 rounded-full" id="recordsTotalBadge">0 Total</span>
+            <span class="bg-sky-100 text-sky-800 font-extrabold px-2.5 py-0.5 rounded-full" id="recordsTotalBadge">0 Total</span>
             <span class="bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full" id="recordsHandBadge">0 Hand</span>
             <span class="bg-rose-100 text-rose-800 font-bold px-2 py-0.5 rounded-full" id="recordsWasteBadge">0 Waste</span>
             <span class="bg-purple-100 text-purple-800 font-bold px-2 py-0.5 rounded-full" id="recordsBothBadge">0 Both</span>
@@ -461,11 +464,11 @@
         <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
           <div class="flex items-center justify-between text-slate-500 mb-2">
             <span class="text-xs font-bold uppercase tracking-wider">Today's Incidents</span>
-            <span class="p-2 rounded-xl bg-indigo-50 text-indigo-600">
+            <span class="p-2 rounded-xl bg-sky-50 text-sky-600">
               <i data-lucide="calendar" class="w-4 h-4"></i>
             </span>
           </div>
-          <div class="text-2xl font-black text-slate-900" id="statTodayTotal">0</div>
+          <div class="text-2xl font-black text-slate-900 font-mono" id="statTodayTotal">0</div>
           <span class="text-[11px] text-slate-400">across all meals today</span>
         </div>
 
@@ -476,7 +479,7 @@
               <i data-lucide="hand" class="w-4 h-4"></i>
             </span>
           </div>
-          <div class="text-2xl font-black text-amber-600" id="statTotalHand">0</div>
+          <div class="text-2xl font-black text-amber-600 font-mono" id="statTotalHand">0</div>
           <span class="text-[11px] text-slate-400">all-time hand incidents</span>
         </div>
 
@@ -487,7 +490,7 @@
               <i data-lucide="trash-2" class="w-4 h-4"></i>
             </span>
           </div>
-          <div class="text-2xl font-black text-rose-600" id="statTotalWaste">0</div>
+          <div class="text-2xl font-black text-rose-600 font-mono" id="statTotalWaste">0</div>
           <span class="text-[11px] text-slate-400">all-time food waste incidents</span>
         </div>
 
@@ -498,7 +501,7 @@
               <i data-lucide="award" class="w-4 h-4"></i>
             </span>
           </div>
-          <div class="text-2xl font-black text-slate-900" id="statAllTimeTotal">0</div>
+          <div class="text-2xl font-black text-slate-900 font-mono" id="statAllTimeTotal">0</div>
           <span class="text-[11px] text-slate-400">all logged infractions</span>
         </div>
 
@@ -511,7 +514,7 @@
         <div class="lg:col-span-8 bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
           <div class="flex items-center justify-between mb-4">
             <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
-              <i data-lucide="trending-up" class="w-4 h-4 text-indigo-600"></i> Daily Trend (Last 14 Days)
+              <i data-lucide="trending-up" class="w-4 h-4 text-sky-600"></i> Daily Trend (Last 14 Days)
             </h3>
             <span class="text-xs text-slate-400">Eat in Hand vs Waste</span>
           </div>
@@ -524,7 +527,7 @@
         <div class="lg:col-span-4 bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
           <div class="flex items-center justify-between mb-4">
             <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
-              <i data-lucide="pie-chart" class="w-4 h-4 text-indigo-600"></i> By Meal Session
+              <i data-lucide="pie-chart" class="w-4 h-4 text-sky-600"></i> By Meal Session
             </h3>
             <span class="text-xs text-slate-400">Distribution</span>
           </div>
@@ -585,13 +588,13 @@
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h2 class="text-lg font-black text-slate-900 flex items-center gap-2">
-              <i data-lucide="users" class="w-5 h-5 text-indigo-600"></i> Student Directory & Batch Management
+              <i data-lucide="users" class="w-5 h-5 text-sky-600"></i> Student Directory & Batch Management
             </h2>
             <p class="text-xs text-slate-500">I MBA pre-loaded. Click any student to open their student-wise summary dossier.</p>
           </div>
 
           <div class="flex items-center gap-2">
-            <button onclick="openUploadModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition">
+            <button onclick="openUploadModal()" class="bg-sky-600 hover:bg-sky-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition">
               <i data-lucide="file-up" class="w-4 h-4"></i>
               <span>Upload II MBA / Batch Excel</span>
             </button>
@@ -607,7 +610,7 @@
           <div class="relative flex-1 w-full">
             <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-2.5"></i>
             <input type="text" id="directorySearchInput" oninput="loadDirectoryStudents()" placeholder="Search students by roll number, name, or phone..." 
-              class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500">
           </div>
 
           <div class="inline-flex rounded-xl p-1 bg-slate-100" id="dirBatchFilterGroup">
@@ -655,7 +658,7 @@
       <!-- Dossier Header -->
       <div class="flex items-start justify-between pb-4 border-b border-slate-100">
         <div class="flex items-center gap-3">
-          <div id="dossierAvatar" class="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-700 font-black text-sm flex items-center justify-center border border-indigo-200">
+          <div id="dossierAvatar" class="w-12 h-12 rounded-2xl bg-sky-100 text-sky-800 font-black text-sm flex items-center justify-center border border-sky-200">
             101
           </div>
           <div>
@@ -691,29 +694,29 @@
         <div class="grid grid-cols-4 gap-2 text-center">
           <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
             <span class="text-[10px] font-bold text-slate-400 uppercase block">Total</span>
-            <span class="text-lg font-black text-slate-900" id="dossierTotalCount">0</span>
+            <span class="text-lg font-black text-slate-900 font-mono" id="dossierTotalCount">0</span>
           </div>
           <div class="p-2.5 rounded-xl bg-amber-50 border border-amber-200">
             <span class="text-[10px] font-bold text-amber-700 uppercase block">🖐️ Hand</span>
-            <span class="text-lg font-black text-amber-800" id="dossierHandCount">0</span>
+            <span class="text-lg font-black text-amber-800 font-mono" id="dossierHandCount">0</span>
           </div>
           <div class="p-2.5 rounded-xl bg-rose-50 border border-rose-200">
             <span class="text-[10px] font-bold text-rose-700 uppercase block">🗑️ Waste</span>
-            <span class="text-lg font-black text-rose-800" id="dossierWasteCount">0</span>
+            <span class="text-lg font-black text-rose-800 font-mono" id="dossierWasteCount">0</span>
           </div>
-          <div class="p-2.5 rounded-xl bg-indigo-50 border border-indigo-200">
-            <span class="text-[10px] font-bold text-indigo-700 uppercase block">Last Seen</span>
-            <span class="text-[11px] font-bold text-indigo-900 block mt-1" id="dossierLastDate">-</span>
+          <div class="p-2.5 rounded-xl bg-sky-50 border border-sky-200">
+            <span class="text-[10px] font-bold text-sky-700 uppercase block">Last Seen</span>
+            <span class="text-[11px] font-bold text-sky-900 block mt-1 font-mono" id="dossierLastDate">-</span>
           </div>
         </div>
 
         <!-- Direct Quick Log for this Student -->
-        <div class="bg-indigo-50/70 border border-indigo-100 rounded-2xl p-3.5">
+        <div class="bg-sky-50/70 border border-sky-100 rounded-2xl p-3.5">
           <div class="flex items-center justify-between mb-2">
-            <span class="text-xs font-bold text-indigo-950 flex items-center gap-1.5">
-              <i data-lucide="plus-circle" class="w-4 h-4 text-indigo-600"></i> Mark Violation for this Student
+            <span class="text-xs font-bold text-sky-950 flex items-center gap-1.5">
+              <i data-lucide="plus-circle" class="w-4 h-4 text-sky-600"></i> Mark Violation for this Student
             </span>
-            <span class="text-[11px] text-indigo-600 font-bold" id="dossierActiveMealLabel">Lunch Session</span>
+            <span class="text-[11px] text-sky-700 font-bold" id="dossierActiveMealLabel">Lunch Session</span>
           </div>
           <div class="flex items-center gap-2">
             <button type="button" onclick="logFromDossier('eat_in_hand')" class="flex-1 py-1.5 px-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 shadow-sm">
@@ -755,7 +758,7 @@
       <div class="flex items-center justify-between pb-3 border-b border-slate-100">
         <div>
           <h3 class="text-base font-black text-slate-900 flex items-center gap-2">
-            <i data-lucide="user-cog" class="w-5 h-5 text-indigo-600"></i> Manage User Logins
+            <i data-lucide="user-cog" class="w-5 h-5 text-sky-600"></i> Manage User Logins
           </h3>
           <p class="text-xs text-slate-500">Create & manage accounts for Food Committee members and Staff</p>
         </div>
@@ -770,18 +773,18 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label class="block text-[11px] font-bold text-slate-600 mb-1">Username *</label>
-            <input type="text" id="newUsername" required placeholder="e.g. committee_joy" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <input type="text" id="newUsername" required placeholder="e.g. committee_joy" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500">
           </div>
           <div>
             <label class="block text-[11px] font-bold text-slate-600 mb-1">Full Name *</label>
-            <input type="text" id="newFullName" required placeholder="e.g. Joy Joshika (Committee)" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <input type="text" id="newFullName" required placeholder="e.g. Joy Joshika (Committee)" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500">
           </div>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label class="block text-[11px] font-bold text-slate-600 mb-1">Role *</label>
-            <select id="newUserRole" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <select id="newUserRole" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500">
               <option value="food_committee">🍽️ Food Committee (Counter Duty)</option>
               <option value="staff">📋 Staff / Supervisor (Records & Reports)</option>
               <option value="admin">🎓 Administrator (Warden / Full Access)</option>
@@ -789,12 +792,12 @@
           </div>
           <div>
             <label class="block text-[11px] font-bold text-slate-600 mb-1">Password *</label>
-            <input type="password" id="newUserPassword" required placeholder="Create a password" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <input type="password" id="newUserPassword" required placeholder="Create a password" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500">
           </div>
         </div>
 
         <div class="flex justify-end pt-1">
-          <button type="submit" id="saveUserBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-sm transition flex items-center gap-1.5">
+          <button type="submit" id="saveUserBtn" class="bg-sky-600 hover:bg-sky-700 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-sm transition flex items-center gap-1.5">
             <i data-lucide="plus" class="w-4 h-4"></i>
             <span>Create Account</span>
           </button>
@@ -875,13 +878,13 @@
         <!-- Remarks Input -->
         <div>
           <label class="block text-xs font-bold text-slate-700 mb-1">Detailed Remarks (Optional)</label>
-          <textarea id="modalRemarksInput" rows="2" placeholder="e.g. Left full bowl of sambar and rice..." class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+          <textarea id="modalRemarksInput" rows="2" placeholder="e.g. Left full bowl of sambar and rice..." class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500"></textarea>
         </div>
       </div>
 
       <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
         <button type="button" onclick="closeQuickNoteModal()" class="px-3 py-2 text-xs font-semibold text-slate-500 hover:text-slate-700">Cancel</button>
-        <button type="button" onclick="submitQuickNoteModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition">
+        <button type="button" onclick="submitQuickNoteModal()" class="bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition">
           Save Record
         </button>
       </div>
@@ -910,7 +913,7 @@
           <label class="block text-xs font-bold text-slate-700 mb-1">Target Batch Name</label>
           <div class="flex gap-2">
             <input type="text" id="uploadBatchName" value="II MBA" required placeholder="e.g. II MBA" 
-              class="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              class="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500">
             <button type="button" onclick="document.getElementById('uploadBatchName').value='II MBA'" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-semibold text-slate-600">II MBA</button>
             <button type="button" onclick="document.getElementById('uploadBatchName').value='I MBA'" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-semibold text-slate-600">I MBA</button>
           </div>
@@ -918,10 +921,10 @@
 
         <div>
           <label class="block text-xs font-bold text-slate-700 mb-1">Excel File (.xlsx / .xls)</label>
-          <div id="dropZone" onclick="document.getElementById('excelFileInput').click()" class="border-2 border-dashed border-indigo-200 hover:border-indigo-500 bg-indigo-50/50 hover:bg-indigo-50 rounded-2xl p-6 text-center cursor-pointer transition">
-            <i data-lucide="cloud-upload" class="w-10 h-10 text-indigo-400 mx-auto mb-2"></i>
-            <p class="text-xs font-bold text-indigo-900 mb-1" id="fileChosenLabel">Click to browse or drop Excel file here</p>
-            <p class="text-[11px] text-indigo-600/70">Supports format: SNO, D.No, Candidate Name, Mobile, Gender</p>
+          <div id="dropZone" onclick="document.getElementById('excelFileInput').click()" class="border-2 border-dashed border-sky-200 hover:border-sky-500 bg-sky-50/50 hover:bg-sky-50 rounded-2xl p-6 text-center cursor-pointer transition">
+            <i data-lucide="cloud-upload" class="w-10 h-10 text-sky-400 mx-auto mb-2"></i>
+            <p class="text-xs font-bold text-sky-900 mb-1" id="fileChosenLabel">Click to browse or drop Excel file here</p>
+            <p class="text-[11px] text-sky-700/70">Supports format: SNO, D.No, Candidate Name, Mobile, Gender</p>
             <input type="file" id="excelFileInput" accept=".xlsx, .xls" class="hidden" onchange="onFileSelected(this)">
           </div>
         </div>
@@ -941,7 +944,7 @@
           <button type="button" id="previewBtn" onclick="previewSelectedExcel()" class="bg-slate-200 hover:bg-slate-300 text-slate-800 px-3.5 py-2 rounded-xl text-xs font-bold transition">
             Preview File
           </button>
-          <button type="submit" id="submitImportBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition flex items-center gap-1.5">
+          <button type="submit" id="submitImportBtn" class="bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition flex items-center gap-1.5">
             <i data-lucide="check" class="w-4 h-4"></i>
             <span>Import Students</span>
           </button>
@@ -957,7 +960,7 @@
     <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl border border-slate-100">
       <div class="flex items-center justify-between pb-3 border-b border-slate-100">
         <h3 class="text-base font-black text-slate-900 flex items-center gap-2">
-          <i data-lucide="user-plus" class="w-5 h-5 text-indigo-600"></i> Add Student
+          <i data-lucide="user-plus" class="w-5 h-5 text-sky-600"></i> Add Student
         </h3>
         <button onclick="closeAddStudentModal()" class="text-slate-400 hover:text-slate-600 p-1">
           <i data-lucide="x" class="w-5 h-5"></i>
@@ -967,23 +970,23 @@
       <form id="addStudentForm" onsubmit="handleAddStudent(event)" class="py-4 space-y-3">
         <div>
           <label class="block text-xs font-bold text-slate-700 mb-1">Roll Number / D.No *</label>
-          <input type="text" id="newStudentRoll" required placeholder="e.g. 26PBA115" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium uppercase focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          <input type="text" id="newStudentRoll" required placeholder="e.g. 26PBA115" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium uppercase focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500">
         </div>
         <div>
           <label class="block text-xs font-bold text-slate-700 mb-1">Full Student Name *</label>
-          <input type="text" id="newStudentName" required placeholder="e.g. JOHN DOE" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium uppercase focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          <input type="text" id="newStudentName" required placeholder="e.g. JOHN DOE" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium uppercase focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500">
         </div>
         <div class="grid grid-cols-2 gap-2">
           <div>
             <label class="block text-xs font-bold text-slate-700 mb-1">Batch</label>
-            <select id="newStudentBatch" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <select id="newStudentBatch" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-sky-500">
               <option value="I MBA">I MBA</option>
               <option value="II MBA">II MBA</option>
             </select>
           </div>
           <div>
             <label class="block text-xs font-bold text-slate-700 mb-1">Gender</label>
-            <select id="newStudentGender" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <select id="newStudentGender" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-sky-500">
               <option value="M">Male (M)</option>
               <option value="F">Female (F)</option>
             </select>
@@ -991,12 +994,12 @@
         </div>
         <div>
           <label class="block text-xs font-bold text-slate-700 mb-1">Mobile Number (Optional)</label>
-          <input type="tel" id="newStudentMobile" placeholder="e.g. 9876543210" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          <input type="tel" id="newStudentMobile" placeholder="e.g. 9876543210" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500">
         </div>
 
         <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
           <button type="button" onclick="closeAddStudentModal()" class="px-3 py-2 text-xs font-semibold text-slate-500 hover:text-slate-700">Cancel</button>
-          <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition">
+          <button type="submit" class="bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition">
             Save Student
           </button>
         </div>
@@ -1019,7 +1022,7 @@
         <div id="qrCodeContainer" class="flex justify-center"></div>
       </div>
 
-      <div class="bg-indigo-50 border border-indigo-200 p-2.5 rounded-xl mb-4 text-xs font-mono text-indigo-900 break-all select-all font-bold" id="mobileDirectUrlText">
+      <div class="bg-sky-50 border border-sky-200 p-2.5 rounded-xl mb-4 text-xs font-mono text-sky-900 break-all select-all font-bold" id="mobileDirectUrlText">
         http://...
       </div>
 
